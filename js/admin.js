@@ -8,6 +8,15 @@ async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
+    const btn = document.getElementById('login-btn');
+    const msgDiv = document.getElementById('message');
+
+    // Show loading spinner
+    btn.classList.add('loading');
+    btn.disabled = true;
+    msgDiv.textContent = '';
+    msgDiv.className = 'message';
+
     try {
         const data = await apiFetch('/auth/login', {
             method: 'POST',
@@ -15,12 +24,22 @@ async function handleLogin(e) {
         });
         if (data.access_token) {
             localStorage.setItem('admin_token', data.access_token);
-            window.location.href = 'dashboard.html';
+            msgDiv.textContent = 'Login successful! Redirecting…';
+            msgDiv.className = 'message message-success';
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 800);
         } else {
-            alert('Login failed');
+            msgDiv.textContent = 'Login failed – please check your credentials.';
+            msgDiv.className = 'message message-error';
         }
     } catch (e) {
-        alert('Error logging in');
+        msgDiv.textContent = 'Network error – please try again.';
+        msgDiv.className = 'message message-error';
+    } finally {
+        // Stop loading spinner
+        btn.classList.remove('loading');
+        btn.disabled = false;
     }
 }
 
