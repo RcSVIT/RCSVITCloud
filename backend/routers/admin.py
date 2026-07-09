@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from database import D1Wrapper
 from utils.security import decode_access_token
-from pydantic import BaseModel, Optional
-import os
+from pydantic import BaseModel
+from typing import Optional   # <-- add this line
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 security = HTTPBearer()
