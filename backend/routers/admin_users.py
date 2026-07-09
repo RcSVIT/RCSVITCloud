@@ -2,7 +2,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from database import D1Wrapper
 from utils.security import hash_password
-from pydantic import BaseModel, Optional
+from pydantic import BaseModel
+from typing import Optional
 from routers.admin import get_current_admin
 
 router = APIRouter(prefix="/admin/users", tags=["admin_users"])
