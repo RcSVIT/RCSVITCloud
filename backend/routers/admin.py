@@ -1,13 +1,12 @@
-import os 
-import uuid
+import os
 import cloudinary
 import cloudinary.uploader
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from database import D1Wrapper
 from utils.security import decode_access_token
 from pydantic import BaseModel
-from typing import Optional   # <-- add this line
+from typing import Optional
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 security = HTTPBearer()
@@ -39,19 +38,21 @@ class YearUpdate(BaseModel):
 
 @router.post("/years")
 async def create_year(year: YearCreate, current=Depends(get_current_admin)):
-    year_id = str(uuid.uuid4())
-    sql = "INSERT INTO years (id, year, president_name) VALUES (?, ?, ?)"
-    await db.query(sql, [year_id, year.year, year.president_name])
-    return {"success": True, "id": year_id}
+    # No UUID – let D1 auto‑increment the integer primary key
+    sql = "INSERT INTO years (year, president_name) VALUES (?, ?)"
+    result = await db.query(sql, [year.year, year.president_name])
+    # D1 returns the last inserted ID in the meta if you use RETURNING, but we'll just return success
+    return {"success": True}
 
 @router.put("/years/{year_id}")
-async def update_year(year_id: str, update: YearUpdate, current=Depends(get_current_admin)):
+async def update_year(year_id: int, update: YearUpdate, current=Depends(get_current_admin)):
+    # Now expects integer ID
     sql = "UPDATE years SET president_name = ? WHERE id = ?"
     await db.query(sql, [update.president_name, year_id])
     return {"success": True}
 
 @router.delete("/years/{year_id}")
-async def delete_year(year_id: str, current=Depends(get_current_admin)):
+async def delete_year(year_id: int, current=Depends(get_current_admin)):
     await db.query("DELETE FROM years WHERE id = ?", [year_id])
     return {"success": True}
 
@@ -62,7 +63,7 @@ async def get_years(current=Depends(get_current_admin)):
 
 # ---- Media CRUD ----
 class MediaCreate(BaseModel):
-    year_id: str
+    year_id: int                     # changed to int
     title: Optional[str] = None
     description: Optional[str] = None
     capture_date: Optional[str] = None
@@ -75,7 +76,7 @@ class MediaCreate(BaseModel):
     cloudinary_url: str
     media_type: str
     file_size: int = 0
-    parent_id: Optional[str] = None
+    parent_id: Optional[int] = None  # changed to int
     sort_order: int = 0
 
 class MediaUpdate(BaseModel):
@@ -91,23 +92,23 @@ class MediaUpdate(BaseModel):
 
 @router.post("/media")
 async def create_media(media: MediaCreate, current=Depends(get_current_admin)):
-    media_id = str(uuid.uuid4())
+    # No UUID – let D1 auto‑increment the primary key
     sql = """INSERT INTO media (
-        id, year_id, title, description, capture_date, upload_date,
+        year_id, title, description, capture_date, upload_date,
         location, people, event, tags, cloudinary_public_id,
         cloudinary_url, media_type, file_size, parent_id, sort_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
     await db.query(sql, [
-        media_id, media.year_id, media.title, media.description,
+        media.year_id, media.title, media.description,
         media.capture_date, media.upload_date,
         media.location, media.people, media.event, media.tags,
         media.cloudinary_public_id, media.cloudinary_url,
         media.media_type, media.file_size, media.parent_id, media.sort_order
     ])
-    return {"success": True, "id": media_id}
+    return {"success": True}
 
 @router.put("/media/{media_id}")
-async def update_media(media_id: str, update: MediaUpdate, current=Depends(get_current_admin)):
+async def update_media(media_id: int, update: MediaUpdate, current=Depends(get_current_admin)):
     fields = []
     params = []
     for field, value in update.dict(exclude_unset=True).items():
@@ -122,7 +123,7 @@ async def update_media(media_id: str, update: MediaUpdate, current=Depends(get_c
     return {"success": True}
 
 @router.delete("/media/{media_id}")
-async def delete_media(media_id: str, current=Depends(get_current_admin)):
+async def delete_media(media_id: int, current=Depends(get_current_admin)):
     rows = await db.query("SELECT cloudinary_public_id, media_type FROM media WHERE id = ?", [media_id])
     if not rows:
         raise HTTPException(status_code=404, detail="Media not found")
