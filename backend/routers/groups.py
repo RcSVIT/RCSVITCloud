@@ -21,3 +21,4 @@ async def get_group(parent_id: str):
     sql = "SELECT * FROM media WHERE parent_id = ? ORDER BY sort_order"
     rows = await db.query(sql, [parent_id])
     return {"success": True, "data": rows}
+    
