@@ -1,3 +1,4 @@
+import os 
 import uuid
 import cloudinary
 import cloudinary.uploader
