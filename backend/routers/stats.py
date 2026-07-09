@@ -13,9 +13,13 @@ async def get_dashboard_stats(current=Depends(get_current_admin)):
     shares = (await db.query("SELECT SUM(shares_count) as total FROM media"))[0]["total"] or 0
     years = (await db.query("SELECT COUNT(*) as count FROM years"))[0]["count"] or 0
 
-    today = (await db.query("SELECT SUM(count) as total FROM visitor_stats WHERE date = date('now')"))[0]["total"] or 0
-    month = (await db.query("SELECT SUM(count) as total FROM visitor_stats WHERE date >= date('now', 'start of month')"))[0]["total"] or 0
-    year_visitors = (await db.query("SELECT SUM(count) as total FROM visitor_stats WHERE date >= date('now', 'start of year')"))[0]["total"] or 0
+    # Visitor stats – safe fallback if table is missing
+    try:
+        today = (await db.query("SELECT SUM(count) as total FROM visitor_stats WHERE date = date('now')"))[0]["total"] or 0
+        month = (await db.query("SELECT SUM(count) as total FROM visitor_stats WHERE date >= date('now', 'start of month')"))[0]["total"] or 0
+        year_visitors = (await db.query("SELECT SUM(count) as total FROM visitor_stats WHERE date >= date('now', 'start of year')"))[0]["total"] or 0
+    except:
+        today = month = year_visitors = 0
 
     top_views = await db.query(
         "SELECT id, title, cloudinary_url, media_type, views_count FROM media ORDER BY views_count DESC LIMIT 5"
