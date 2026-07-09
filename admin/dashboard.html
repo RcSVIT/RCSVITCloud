@@ -1,346 +1,270 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard – RCSVIT</title>
-    <link rel="stylesheet" href="../css/styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-        /* Additional dashboard-specific styles that extend Novichok’s base */
-        .admin-dashboard .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 16px;
-            margin: 24px 0;
+import { apiFetch } from './api.js';
+
+const CLOUDINARY_CLOUD_NAME = 'jypxyqtu';
+
+// --- Login (unchanged) ---
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('login-btn');
+    const msgDiv = document.getElementById('message');
+    btn.classList.add('loading');
+    btn.disabled = true;
+    msgDiv.textContent = '';
+    msgDiv.className = 'message';
+    try {
+        const data = await apiFetch('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password })
+        });
+        if (data.access_token) {
+            localStorage.setItem('admin_token', data.access_token);
+            msgDiv.textContent = 'Login successful! Redirecting…';
+            msgDiv.className = 'message message-success';
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
+        } else {
+            msgDiv.textContent = 'Login failed – please check your credentials.';
+            msgDiv.className = 'message message-error';
         }
+    } catch (e) {
+        msgDiv.textContent = 'Network error – please try again.';
+        msgDiv.className = 'message message-error';
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+}
 
-        .admin-dashboard .stat-card {
-            background: #fff;
-            border: 1px solid #d9d9d9;
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
+// --- Dashboard (all sub-functions) ---
+async function loadDashboard() {
+    const token = localStorage.getItem('admin_token');
+    if (!token) { window.location.href = 'login.html'; return; }
+    try {
+        const stats = await apiFetch('/stats/dashboard');
+        document.getElementById('total-media').textContent = stats.total_media || 0;
+        document.getElementById('total-storage').textContent = ((stats.storage_bytes || 0) / (1024*1024)).toFixed(2) + ' MB';
+        document.getElementById('total-views').textContent = stats.total_views || 0;
+        document.getElementById('total-shares').textContent = stats.total_shares || 0;
+        document.getElementById('total-years').textContent = stats.total_years || 0;
+        document.getElementById('visitors-today').textContent = stats.visitors_today || 0;
+        document.getElementById('visitors-month').textContent = stats.visitors_month || 0;
+        document.getElementById('visitors-year').textContent = stats.visitors_year || 0;
 
-        .admin-dashboard .stat-card .number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #000;
-        }
+        new Chart(document.getElementById('viewsChart'), {
+            type: 'bar',
+            data: {
+                labels: stats.top_views.map(m => m.title || 'Untitled'),
+                datasets: [{ label: 'Views', data: stats.top_views.map(m => m.views_count || 0), backgroundColor: '#000' }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+        new Chart(document.getElementById('sharesChart'), {
+            type: 'bar',
+            data: {
+                labels: stats.top_shares.map(m => m.title || 'Untitled'),
+                datasets: [{ label: 'Shares', data: stats.top_shares.map(m => m.shares_count || 0), backgroundColor: '#000' }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
 
-        .admin-dashboard .stat-card .label {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #777;
-            margin-top: 4px;
-        }
+        loadMediaTable();
+        loadYearsDropdown();
+        loadYearsTable();          // ← NEW: fills the years management table
+        loadAdmins();
+    } catch (e) {
+        alert('Error loading dashboard');
+    }
+}
 
-        .admin-dashboard .chart-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
+async function loadMediaTable() {
+    const data = await apiFetch('/admin/media?limit=100');
+    const media = data.data || [];
+    const tbody = document.getElementById('media-table-body');
+    tbody.innerHTML = media.map(m => `
+        <tr>
+            <td>${m.title || 'Untitled'}</td>
+            <td>${m.media_type}</td>
+            <td>${m.views_count || 0}</td>
+            <td><button onclick="deleteMedia('${m.id}')" class="btn btn-danger" style="padding:4px 12px;">Delete</button></td>
+        </tr>
+    `).join('');
+}
 
-        .admin-dashboard .chart-box {
-            background: #fff;
-            border: 1px solid #d9d9d9;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
+window.deleteMedia = async function(id) {
+    if (!confirm('Delete permanently?')) return;
+    await apiFetch(`/admin/media/${id}`, { method: 'DELETE' });
+    loadMediaTable();
+    loadDashboard();
+};
 
-        .admin-dashboard .chart-box h3 {
-            font-size: 1rem;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
+async function loadYearsDropdown() {
+    const data = await apiFetch('/admin/years');
+    const years = data.data || [];
+    const select = document.getElementById('upload-year');
+    if (select) select.innerHTML = years.map(y => `<option value="${y.id}">${y.year}</option>`).join('');
+}
 
-        .admin-dashboard .table-wrap {
-            background: #fff;
-            border: 1px solid #d9d9d9;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
-            overflow-x: auto;
-        }
+// NEW – Years management table
+async function loadYearsTable() {
+    const data = await apiFetch('/admin/years');
+    const years = data.data || [];
+    const tbody = document.getElementById('years-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = years.map(y => `
+        <tr>
+            <td>${y.year}</td>
+            <td>${y.president_name || '—'}</td>
+            <td>${y.media_count || 0}</td>
+            <td>
+                <button class="btn btn-outline" style="padding:4px 12px; margin-right:6px;" onclick="editYear('${y.id}', '${y.president_name || ''}')">Edit</button>
+                <button class="btn btn-danger" style="padding:4px 12px;" onclick="deleteYear('${y.id}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
 
-        .admin-dashboard table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+window.editYear = function(id, currentName) {
+    const newName = prompt('Enter new president name:', currentName);
+    if (newName !== null) {
+        apiFetch(`/admin/years/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ president_name: newName })
+        }).then(() => {
+            loadYearsTable();
+            loadYearsDropdown();
+        }).catch(() => alert('Error updating year'));
+    }
+};
 
-        .admin-dashboard th,
-        .admin-dashboard td {
-            padding: 12px 16px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
+window.deleteYear = async function(id) {
+    if (!confirm('Delete this year and all its media? This cannot be undone!')) return;
+    await apiFetch(`/admin/years/${id}`, { method: 'DELETE' });
+    loadYearsTable();
+    loadYearsDropdown();
+    loadMediaTable();
+    loadDashboard();
+};
 
-        .admin-dashboard th {
-            background: #f9f9f9;
-            font-weight: 600;
-            color: #333;
-        }
-
-        .admin-dashboard .btn-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 24px;
-        }
-
-        /* Modal overlay (same as public site) */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(4px);
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal-box {
-            background: #fff;
-            padding: 32px;
-            border-radius: 16px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 85vh;
-            overflow-y: auto;
-            box-shadow: 0 12px 32px rgba(0,0,0,0.15);
-        }
-
-        .modal-box h3 {
-            margin-bottom: 20px;
-            font-size: 1.4rem;
-            font-weight: 700;
-        }
-
-        .admin-dashboard .form-group {
-            margin-bottom: 16px;
-        }
-
-        .admin-dashboard .form-group label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 4px;
-            color: #333;
-        }
-
-        .admin-dashboard .form-group input,
-        .admin-dashboard .form-group textarea,
-        .admin-dashboard .form-group select {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid #d9d9d9;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            transition: border 0.2s;
-        }
-
-        .admin-dashboard .form-group input:focus,
-        .admin-dashboard .form-group textarea:focus,
-        .admin-dashboard .form-group select:focus {
-            outline: none;
-            border-color: #000;
-        }
-
-        .admin-dashboard .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: 0.2s;
-            font-size: 0.9rem;
-        }
-
-        .admin-dashboard .btn-primary {
-            background: #000;
-            color: #fff;
-        }
-
-        .admin-dashboard .btn-primary:hover {
-            background: #222;
-        }
-
-        .admin-dashboard .btn-outline {
-            background: transparent;
-            border: 1px solid #bbb;
-            color: #333;
-        }
-
-        .admin-dashboard .btn-outline:hover {
-            background: #f5f5f5;
-        }
-
-        .admin-dashboard .btn-danger {
-            background: #d32f2f;
-            color: #fff;
-        }
-
-        .admin-dashboard .btn-danger:hover {
-            background: #b71c1c;
-        }
-
-        @media (max-width: 768px) {
-            .admin-dashboard .chart-row {
-                grid-template-columns: 1fr;
-            }
-            .admin-dashboard .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .admin-dashboard .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-
-    <!-- Black header (matching public pages) -->
-    <header class="site-header">
-        <span class="site-title">RCSVIT Admin</span>
-    </header>
-
-    <main class="main-container admin-dashboard">
-        <!-- Action buttons -->
-        <div class="btn-row">
-            <button id="upload-btn" class="btn btn-primary">+ Upload Media</button>
-            <button class="btn btn-outline" onclick="document.getElementById('create-year-modal').classList.add('active')">+ Add Year</button>
-            <button id="logout-btn" class="btn btn-outline" style="margin-left:auto;">Logout</button>
+async function loadAdmins() {
+    const data = await apiFetch('/admin/users/');
+    const admins = data || [];
+    const container = document.getElementById('admins-list');
+    container.innerHTML = admins.map(a => `
+        <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #f1f5f9;">
+            <span>${a.email} (${a.role})</span>
+            <button onclick="deleteAdmin('${a.id}')" class="btn btn-danger" style="padding:4px 12px;">Remove</button>
         </div>
+    `).join('');
+}
 
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="number" id="total-media">0</div>
-                <div class="label">Total Media</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="total-storage">0 MB</div>
-                <div class="label">Storage</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="total-views">0</div>
-                <div class="label">Total Views</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="total-shares">0</div>
-                <div class="label">Total Shares</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="total-years">0</div>
-                <div class="label">Years</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="visitors-today">0</div>
-                <div class="label">Visitors Today</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="visitors-month">0</div>
-                <div class="label">This Month</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="visitors-year">0</div>
-                <div class="label">This Year</div>
-            </div>
-        </div>
+window.deleteAdmin = async function(id) {
+    if (!confirm('Remove this admin?')) return;
+    await apiFetch(`/admin/users/${id}`, { method: 'DELETE' });
+    loadAdmins();
+};
 
-        <!-- Charts -->
-        <div class="chart-row">
-            <div class="chart-box">
-                <h3>Top 5 Views</h3>
-                <canvas id="viewsChart" height="150"></canvas>
-            </div>
-            <div class="chart-box">
-                <h3>Top 5 Shares</h3>
-                <canvas id="sharesChart" height="150"></canvas>
-            </div>
-        </div>
+// --- Upload (unchanged) ---
+async function uploadMedia() {
+    const file = document.getElementById('upload-file').files[0];
+    if (!file) return alert('Select a file');
+    const title = document.getElementById('upload-title').value;
+    const description = document.getElementById('upload-desc').value;
+    const captureDate = document.getElementById('upload-capture-date').value;
+    const location = document.getElementById('upload-location').value;
+    const people = document.getElementById('upload-people').value;
+    const event = document.getElementById('upload-event').value;
+    const tags = document.getElementById('upload-tags').value;
+    const yearId = document.getElementById('upload-year').value;
 
-        <!-- Media Table -->
-        <div class="table-wrap">
-            <h3 style="margin-bottom:12px;">All Media</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Type</th>
-                        <th>Views</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="media-table-body"></tbody>
-            </table>
-        </div>
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'club_unsigned');
+    try {
+        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        const cloudData = await uploadRes.json();
+        if (!cloudData.secure_url) throw new Error('Cloudinary upload failed');
+        const payload = {
+            year_id: yearId,
+            title: title || file.name,
+            description: description,
+            capture_date: captureDate || null,
+            upload_date: new Date().toISOString().split('T')[0],
+            location: location || null,
+            people: people || null,
+            event: event || null,
+            tags: tags || null,
+            cloudinary_public_id: cloudData.public_id,
+            cloudinary_url: cloudData.secure_url,
+            media_type: cloudData.resource_type,
+            file_size: file.size,
+            parent_id: null,
+            sort_order: 0
+        };
+        await apiFetch('/admin/media', { method: 'POST', body: JSON.stringify(payload) });
+        alert('Upload successful!');
+        document.getElementById('upload-modal').classList.remove('active');
+        loadMediaTable();
+        loadDashboard();
+    } catch (e) {
+        alert(`Upload error: ${e.message}`);
+    }
+}
 
-        <!-- Admin Management -->
-        <div class="table-wrap">
-            <h3 style="margin-bottom:12px;">Manage Admins</h3>
-            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
-                <input id="new-admin-email" placeholder="Email" class="form-group" style="flex:1; min-width:150px; margin:0;">
-                <input id="new-admin-password" type="password" placeholder="Password" class="form-group" style="flex:1; min-width:150px; margin:0;">
-                <select id="new-admin-role" class="form-group" style="flex:0; margin:0;">
-                    <option value="admin">Admin</option>
-                    <option value="super">Super</option>
-                </select>
-                <button id="add-admin-btn" class="btn btn-primary">Add</button>
-            </div>
-            <div id="admins-list"></div>
-        </div>
-    </main>
+// --- Create year (modal) ---
+async function createYear() {
+    const year = document.getElementById('new-year').value;
+    const president = document.getElementById('new-president').value;
+    if (!year) return alert('Enter a year');
+    await apiFetch('/admin/years', {
+        method: 'POST',
+        body: JSON.stringify({ year: parseInt(year), president_name: president || null })
+    });
+    alert('Year created');
+    document.getElementById('new-year').value = '';
+    document.getElementById('new-president').value = '';
+    document.getElementById('create-year-modal').classList.remove('active');
+    loadYearsDropdown();
+    loadYearsTable();
+    loadDashboard();
+}
 
-    <!-- Upload Modal -->
-    <div id="upload-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3>Upload Media</h3>
-            <div class="form-group"><label>File</label><input type="file" id="upload-file" accept="image/*,video/*"></div>
-            <div class="form-group"><label>Title</label><input id="upload-title" placeholder="Title"></div>
-            <div class="form-group"><label>Description</label><textarea id="upload-desc" rows="2"></textarea></div>
-            <div class="form-group"><label>Capture Date</label><input type="date" id="upload-capture-date"></div>
-            <div class="form-group"><label>Location</label><input id="upload-location" placeholder="Location"></div>
-            <div class="form-group"><label>People</label><input id="upload-people" placeholder="People"></div>
-            <div class="form-group"><label>Event</label><input id="upload-event" placeholder="Event"></div>
-            <div class="form-group"><label>Tags</label><input id="upload-tags" placeholder="comma, separated"></div>
-            <div class="form-group"><label>Year</label><select id="upload-year"></select></div>
-            <div style="display:flex; gap:12px; justify-content:flex-end;">
-                <button id="confirm-upload" class="btn btn-primary">Upload</button>
-                <button id="close-modal" class="btn btn-outline">Cancel</button>
-            </div>
-        </div>
-    </div>
+// --- Logout ---
+function logout() {
+    localStorage.removeItem('admin_token');
+    window.location.href = 'login.html';
+}
 
-    <!-- Create Year Modal -->
-    <div id="create-year-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3>Add Year</h3>
-            <div class="form-group"><label>Year</label><input type="number" id="new-year" placeholder="e.g. 2025"></div>
-            <div class="form-group"><label>President Name</label><input id="new-president" placeholder="President"></div>
-            <div style="display:flex; gap:12px; justify-content:flex-end;">
-                <button id="create-year-btn" class="btn btn-primary">Create</button>
-                <button class="btn btn-outline" onclick="document.getElementById('create-year-modal').classList.remove('active')">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <script type="module" src="../js/admin.js"></script>
-</body>
-</html>
+// --- Event listeners (NOW WORKS because #dashboard-container exists) ---
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('login-form')) {
+        document.getElementById('login-form').addEventListener('submit', handleLogin);
+    }
+    if (document.getElementById('dashboard-container')) {
+        loadDashboard();
+        document.getElementById('upload-btn').addEventListener('click', () => {
+            document.getElementById('upload-modal').classList.add('active');
+        });
+        document.getElementById('close-modal').addEventListener('click', () => {
+            document.getElementById('upload-modal').classList.remove('active');
+        });
+        document.getElementById('confirm-upload').addEventListener('click', uploadMedia);
+        document.getElementById('create-year-btn').addEventListener('click', createYear);
+        document.getElementById('logout-btn').addEventListener('click', logout);
+        document.getElementById('add-admin-btn').addEventListener('click', async () => {
+            const email = document.getElementById('new-admin-email').value;
+            const password = document.getElementById('new-admin-password').value;
+            const role = document.getElementById('new-admin-role').value;
+            if (!email || !password) return alert('Fill all fields');
+            await apiFetch('/admin/users/', {
+                method: 'POST',
+                body: JSON.stringify({ email, password, role })
+            });
+            alert('Admin added');
+            loadAdmins();
+        });
+    }
+});
