@@ -3,21 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Detail</title>
+    <title>Media Detail – RCSVIT</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <header class="black-header">
-        <div class="container">
-            <div class="brand">📸 Club Archive</div>
-            <div class="nav-links">
-                <a href="javascript:history.back()">← Back</a>
-            </div>
-        </div>
+
+    <header class="site-header">
+        <span class="site-title">RCSVIT Archive</span>
     </header>
-    <main class="container">
-        <div class="detail-wrapper" id="detail-container"></div>
+
+    <main class="main-container">
+        <a href="javascript:history.back()" class="back-btn">← Back</a>
+
+        <!-- The JavaScript will inject the full detail view here -->
+        <div id="detail-container"></div>
     </main>
+
     <script type="module" src="js/gallery.js"></script>
 </body>
 </html>
