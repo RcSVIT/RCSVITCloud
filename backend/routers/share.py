@@ -6,7 +6,7 @@ import os
 router = APIRouter(prefix="/share", tags=["share"])
 db = D1Wrapper()
 CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
-GITHUB_PAGES_URL = "https://your-github-username.github.io"  # CHANGE THIS
+GITHUB_PAGES_URL = os.getenv("GITHUB_PAGES_URL", "https://your-github-pages-url.com")
 
 @router.get("/{media_id}", response_class=HTMLResponse)
 async def share_page(media_id: str):
