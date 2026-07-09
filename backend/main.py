@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import auth, media, admin, admin_users, stats, share, groups
 from database import D1Wrapper
 from utils.security import hash_password
-import os, uuid
+import os
 
 app = FastAPI(title="Club Media API", version="1.0.0")
 
@@ -34,9 +34,9 @@ async def startup():
     rows = await db.query("SELECT * FROM admins WHERE email = ?", [admin_email])
     if not rows:
         hashed = hash_password(admin_pass)
-        admin_id = str(uuid.uuid4())
-        sql = "INSERT INTO admins (id, email, password_hash, role) VALUES (?, ?, ?, ?)"
-        await db.query(sql, [admin_id, admin_email, hashed, "super"])
+        # No UUID – D1 will auto‑increment the integer primary key
+        sql = "INSERT INTO admins (email, password_hash, role) VALUES (?, ?, ?)"
+        await db.query(sql, [admin_email, hashed, "super"])
         print(f"Super admin created: {admin_email}")
 
 @app.get("/")
