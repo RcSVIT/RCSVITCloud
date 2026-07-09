@@ -1,5 +1,8 @@
 import { apiFetch } from './api.js';
 
+// CHANGE THIS: Your Cloudinary cloud name
+const CLOUDINARY_CLOUD_NAME = 'YOUR_CLOUDINARY_CLOUD_NAME';
+
 // --- Login ---
 async function handleLogin(e) {
     e.preventDefault();
@@ -39,7 +42,6 @@ async function loadDashboard() {
         document.getElementById('visitors-month').textContent = stats.visitors_month || 0;
         document.getElementById('visitors-year').textContent = stats.visitors_year || 0;
 
-        // Charts
         new Chart(document.getElementById('viewsChart'), {
             type: 'bar',
             data: {
@@ -126,11 +128,10 @@ async function uploadMedia() {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'club_unsigned'); // Create in Cloudinary
-    const cloudName = 'YOUR_CLOUDINARY_CLOUD_NAME';   // CHANGE THIS
+    formData.append('upload_preset', 'club_unsigned'); // Must exist in Cloudinary
 
     try {
-        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
             method: 'POST',
             body: formData
         });
