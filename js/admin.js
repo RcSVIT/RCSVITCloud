@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 
 // CHANGE THIS: Your Cloudinary cloud name
-const CLOUDINARY_CLOUD_NAME = 'YOUR_CLOUDINARY_CLOUD_NAME';
+const CLOUDINARY_CLOUD_NAME = 'jypxyqtu';
 
 // --- Login ---
 async function handleLogin(e) {
