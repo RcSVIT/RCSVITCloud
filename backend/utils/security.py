@@ -1,5 +1,5 @@
 import bcrypt
-import jwt
+from jose import jwt, JWTError   # Fixed: use python-jose
 from datetime import datetime, timedelta
 import os
 
@@ -23,5 +23,5 @@ def create_access_token(data: dict):
 def decode_access_token(token: str):
     try:
         return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except jwt.PyJWTError:
+    except JWTError:   # Fixed: correct exception class
         return None
