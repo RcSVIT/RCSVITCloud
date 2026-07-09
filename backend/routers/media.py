@@ -7,7 +7,6 @@ db = D1Wrapper()
 
 @router.get("/years")
 async def get_public_years():
-    """Fetch all years with media count (public)"""
     sql = """
         SELECT y.id, y.year, y.president_name, y.created_at,
                (SELECT COUNT(*) FROM media WHERE media.year_id = y.id) AS media_count
@@ -53,7 +52,6 @@ async def get_related_media(year_id: str, media_id: str, limit: int = 6):
 @router.post("/visitor")
 async def track_visitor():
     today = datetime.date.today().isoformat()
-    # Upsert – increment count
     await db.query(
         "INSERT INTO visitor_stats (date, count) VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET count = count + 1",
         [today]
