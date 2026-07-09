@@ -1,9 +1,5 @@
-
 import httpx
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class D1Wrapper:
     def __init__(self):
