@@ -9,7 +9,6 @@ async function handleLogin(e) {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     try {
-        // FIXED: changed from 'username' to 'email' to match backend
         const data = await apiFetch('/auth/login', {
             method: 'POST',
             body: JSON.stringify({ email, password })
@@ -97,8 +96,9 @@ async function loadYearsDropdown() {
 }
 
 async function loadAdmins() {
-    const data = await apiFetch('/admin/users');
-    const admins = data.data || [];
+    // FIXED: added trailing slash to match backend route
+    const data = await apiFetch('/admin/users/');
+    const admins = data || [];   // response is directly the list (due to response_model)
     const container = document.getElementById('admins-list');
     container.innerHTML = admins.map(a => `
         <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #f1f5f9;">
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('new-admin-password').value;
             const role = document.getElementById('new-admin-role').value;
             if (!email || !password) return alert('Fill all fields');
-            await apiFetch('/admin/users', {
+            await apiFetch('/admin/users/', {
                 method: 'POST',
                 body: JSON.stringify({ email, password, role })
             });
