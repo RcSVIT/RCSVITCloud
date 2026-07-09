@@ -36,7 +36,7 @@ async function handleLogin(e) {
     }
 }
 
-// --- Dashboard (all sub-functions) ---
+// --- Dashboard ---
 async function loadDashboard() {
     const token = localStorage.getItem('admin_token');
     if (!token) { window.location.href = 'login.html'; return; }
@@ -70,8 +70,8 @@ async function loadDashboard() {
 
         loadMediaTable();
         loadYearsDropdown();
-        loadYearsTable();          // ← NEW: fills the years management table
-        loadAdmins();
+        loadYearsTable();
+        loadAdmins().catch(() => {});   // <-- safe wrapper
     } catch (e) {
         alert('Error loading dashboard');
     }
@@ -105,7 +105,6 @@ async function loadYearsDropdown() {
     if (select) select.innerHTML = years.map(y => `<option value="${y.id}">${y.year}</option>`).join('');
 }
 
-// NEW – Years management table
 async function loadYearsTable() {
     const data = await apiFetch('/admin/years');
     const years = data.data || [];
@@ -147,15 +146,25 @@ window.deleteYear = async function(id) {
 };
 
 async function loadAdmins() {
-    const data = await apiFetch('/admin/users/');
-    const admins = data || [];
     const container = document.getElementById('admins-list');
-    container.innerHTML = admins.map(a => `
-        <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #f1f5f9;">
-            <span>${a.email} (${a.role})</span>
-            <button onclick="deleteAdmin('${a.id}')" class="btn btn-danger" style="padding:4px 12px;">Remove</button>
-        </div>
-    `).join('');
+    try {
+        const data = await apiFetch('/admin/users/');
+        const admins = data || [];
+        if (!Array.isArray(admins)) {
+            // This user is not a super admin – show a message
+            container.innerHTML = '<p>Only super admins can manage users.</p>';
+            return;
+        }
+        container.innerHTML = admins.map(a => `
+            <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #f1f5f9;">
+                <span>${a.email} (${a.role})</span>
+                <button onclick="deleteAdmin('${a.id}')" class="btn btn-danger" style="padding:4px 12px;">Remove</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        // 403 or network error – show a friendly message
+        container.innerHTML = '<p>Only super admins can manage users.</p>';
+    }
 }
 
 window.deleteAdmin = async function(id) {
@@ -164,7 +173,7 @@ window.deleteAdmin = async function(id) {
     loadAdmins();
 };
 
-// --- Upload (unchanged) ---
+// --- Upload ---
 async function uploadMedia() {
     const file = document.getElementById('upload-file').files[0];
     if (!file) return alert('Select a file');
@@ -214,7 +223,7 @@ async function uploadMedia() {
     }
 }
 
-// --- Create year (modal) ---
+// --- Create year ---
 async function createYear() {
     const year = document.getElementById('new-year').value;
     const president = document.getElementById('new-president').value;
@@ -238,7 +247,7 @@ function logout() {
     window.location.href = 'login.html';
 }
 
-// --- Event listeners (NOW WORKS because #dashboard-container exists) ---
+// --- Event listeners ---
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('login-form')) {
         document.getElementById('login-form').addEventListener('submit', handleLogin);
