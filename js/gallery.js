@@ -1,7 +1,7 @@
 import { apiFetch } from './api.js';
 
 // CHANGE THIS: Your GitHub Pages URL
-const GITHUB_PAGES_URL = 'https://your-github-username.github.io';
+const GITHUB_PAGES_URL = 'https://rcsvit.github.io/RCSVITCloud/';
 
 async function loadYears() {
     const container = document.getElementById('year-grid');
