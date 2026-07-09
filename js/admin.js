@@ -9,12 +9,10 @@ async function handleLogin(e) {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     try {
-        // Changed from '/admin/login' to '/auth/login' to match the docs
-        // If your backend expects 'username' instead of 'email', change the line below to:
-        // body: JSON.stringify({ username: email, password })
+        // FIXED: changed from 'username' to 'email' to match backend
         const data = await apiFetch('/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ username: email, password })   // ← 'username' is the typical field
+            body: JSON.stringify({ email, password })
         });
         if (data.access_token) {
             localStorage.setItem('admin_token', data.access_token);
