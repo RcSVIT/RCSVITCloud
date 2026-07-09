@@ -51,7 +51,6 @@ async def update_year(year_id: str, update: YearUpdate, current=Depends(get_curr
 
 @router.delete("/years/{year_id}")
 async def delete_year(year_id: str, current=Depends(get_current_admin)):
-    # Cascade delete handled by DB foreign key
     await db.query("DELETE FROM years WHERE id = ?", [year_id])
     return {"success": True}
 
