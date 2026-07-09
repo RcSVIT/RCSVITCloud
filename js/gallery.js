@@ -1,5 +1,8 @@
 import { apiFetch } from './api.js';
 
+// CHANGE THIS: Your GitHub Pages URL
+const GITHUB_PAGES_URL = 'https://your-github-username.github.io';
+
 async function loadYears() {
     const container = document.getElementById('year-grid');
     if (!container) return;
@@ -47,7 +50,6 @@ async function loadGallery() {
                 </div>
             </div>
         `).join('');
-        // Track visitor
         await apiFetch('/media/visitor', { method: 'POST' }).catch(() => {});
     } catch (e) {
         grid.innerHTML = '<p>Failed to load media.</p>';
@@ -126,7 +128,7 @@ function copyLink(url) {
 async function shareMedia(id) {
     try {
         await apiFetch(`/media/${id}/share`, { method: 'POST' });
-        const shareUrl = `https://your-github-pages-url/detail.html?id=${id}`;
+        const shareUrl = `${GITHUB_PAGES_URL}/detail.html?id=${id}`;
         const width = 600, height = 400;
         const left = (window.screen.width - width) / 2;
         const top = (window.screen.height - height) / 2;
@@ -137,7 +139,7 @@ async function shareMedia(id) {
     } catch (e) {}
 }
 
-// Init
+// Initialize
 if (document.getElementById('year-grid')) loadYears();
 if (document.getElementById('gallery-grid')) loadGallery();
 if (document.getElementById('detail-container')) loadDetail();
