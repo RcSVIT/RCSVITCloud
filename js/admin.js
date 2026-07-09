@@ -1,22 +1,18 @@
 import { apiFetch } from './api.js';
 
-// CHANGE THIS: Your Cloudinary cloud name
 const CLOUDINARY_CLOUD_NAME = 'jypxyqtu';
 
-// --- Login ---
+// --- Login (unchanged) ---
 async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
     const btn = document.getElementById('login-btn');
     const msgDiv = document.getElementById('message');
-
-    // Show loading spinner
     btn.classList.add('loading');
     btn.disabled = true;
     msgDiv.textContent = '';
     msgDiv.className = 'message';
-
     try {
         const data = await apiFetch('/auth/login', {
             method: 'POST',
@@ -26,9 +22,7 @@ async function handleLogin(e) {
             localStorage.setItem('admin_token', data.access_token);
             msgDiv.textContent = 'Login successful! Redirecting…';
             msgDiv.className = 'message message-success';
-            setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 800);
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
         } else {
             msgDiv.textContent = 'Login failed – please check your credentials.';
             msgDiv.className = 'message message-error';
@@ -37,23 +31,19 @@ async function handleLogin(e) {
         msgDiv.textContent = 'Network error – please try again.';
         msgDiv.className = 'message message-error';
     } finally {
-        // Stop loading spinner
         btn.classList.remove('loading');
         btn.disabled = false;
     }
 }
 
-// --- Dashboard ---
+// --- Dashboard (all sub-functions) ---
 async function loadDashboard() {
     const token = localStorage.getItem('admin_token');
-    if (!token) {
-        window.location.href = 'login.html';
-        return;
-    }
+    if (!token) { window.location.href = 'login.html'; return; }
     try {
         const stats = await apiFetch('/stats/dashboard');
         document.getElementById('total-media').textContent = stats.total_media || 0;
-        document.getElementById('total-storage').textContent = (stats.storage_bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        document.getElementById('total-storage').textContent = ((stats.storage_bytes || 0) / (1024*1024)).toFixed(2) + ' MB';
         document.getElementById('total-views').textContent = stats.total_views || 0;
         document.getElementById('total-shares').textContent = stats.total_shares || 0;
         document.getElementById('total-years').textContent = stats.total_years || 0;
@@ -80,6 +70,7 @@ async function loadDashboard() {
 
         loadMediaTable();
         loadYearsDropdown();
+        loadYearsTable();          // ← NEW: fills the years management table
         loadAdmins();
     } catch (e) {
         alert('Error loading dashboard');
@@ -111,13 +102,53 @@ async function loadYearsDropdown() {
     const data = await apiFetch('/admin/years');
     const years = data.data || [];
     const select = document.getElementById('upload-year');
-    select.innerHTML = years.map(y => `<option value="${y.id}">${y.year}</option>`).join('');
+    if (select) select.innerHTML = years.map(y => `<option value="${y.id}">${y.year}</option>`).join('');
 }
 
+// NEW – Years management table
+async function loadYearsTable() {
+    const data = await apiFetch('/admin/years');
+    const years = data.data || [];
+    const tbody = document.getElementById('years-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = years.map(y => `
+        <tr>
+            <td>${y.year}</td>
+            <td>${y.president_name || '—'}</td>
+            <td>${y.media_count || 0}</td>
+            <td>
+                <button class="btn btn-outline" style="padding:4px 12px; margin-right:6px;" onclick="editYear('${y.id}', '${y.president_name || ''}')">Edit</button>
+                <button class="btn btn-danger" style="padding:4px 12px;" onclick="deleteYear('${y.id}')">Delete</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+window.editYear = function(id, currentName) {
+    const newName = prompt('Enter new president name:', currentName);
+    if (newName !== null) {
+        apiFetch(`/admin/years/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ president_name: newName })
+        }).then(() => {
+            loadYearsTable();
+            loadYearsDropdown();
+        }).catch(() => alert('Error updating year'));
+    }
+};
+
+window.deleteYear = async function(id) {
+    if (!confirm('Delete this year and all its media? This cannot be undone!')) return;
+    await apiFetch(`/admin/years/${id}`, { method: 'DELETE' });
+    loadYearsTable();
+    loadYearsDropdown();
+    loadMediaTable();
+    loadDashboard();
+};
+
 async function loadAdmins() {
-    // FIXED: added trailing slash to match backend route
     const data = await apiFetch('/admin/users/');
-    const admins = data || [];   // response is directly the list (due to response_model)
+    const admins = data || [];
     const container = document.getElementById('admins-list');
     container.innerHTML = admins.map(a => `
         <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #f1f5f9;">
@@ -133,7 +164,7 @@ window.deleteAdmin = async function(id) {
     loadAdmins();
 };
 
-// --- Upload ---
+// --- Upload (unchanged) ---
 async function uploadMedia() {
     const file = document.getElementById('upload-file').files[0];
     if (!file) return alert('Select a file');
@@ -148,8 +179,7 @@ async function uploadMedia() {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'club_unsigned'); // Must exist in Cloudinary
-
+    formData.append('upload_preset', 'club_unsigned');
     try {
         const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
             method: 'POST',
@@ -157,7 +187,6 @@ async function uploadMedia() {
         });
         const cloudData = await uploadRes.json();
         if (!cloudData.secure_url) throw new Error('Cloudinary upload failed');
-
         const payload = {
             year_id: yearId,
             title: title || file.name,
@@ -175,10 +204,7 @@ async function uploadMedia() {
             parent_id: null,
             sort_order: 0
         };
-        await apiFetch('/admin/media', {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
+        await apiFetch('/admin/media', { method: 'POST', body: JSON.stringify(payload) });
         alert('Upload successful!');
         document.getElementById('upload-modal').classList.remove('active');
         loadMediaTable();
@@ -188,7 +214,7 @@ async function uploadMedia() {
     }
 }
 
-// --- Create year ---
+// --- Create year (modal) ---
 async function createYear() {
     const year = document.getElementById('new-year').value;
     const president = document.getElementById('new-president').value;
@@ -200,7 +226,9 @@ async function createYear() {
     alert('Year created');
     document.getElementById('new-year').value = '';
     document.getElementById('new-president').value = '';
+    document.getElementById('create-year-modal').classList.remove('active');
     loadYearsDropdown();
+    loadYearsTable();
     loadDashboard();
 }
 
@@ -210,7 +238,7 @@ function logout() {
     window.location.href = 'login.html';
 }
 
-// Event listeners
+// --- Event listeners (NOW WORKS because #dashboard-container exists) ---
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('login-form')) {
         document.getElementById('login-form').addEventListener('submit', handleLogin);
