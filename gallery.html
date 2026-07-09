@@ -3,22 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gallery</title>
+    <title>Gallery – RCSVIT</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <header class="black-header">
-        <div class="container">
-            <div class="brand">📸 Club Archive</div>
-            <div class="nav-links">
-                <a href="index.html">← Back to Years</a>
-            </div>
-        </div>
+
+    <header class="site-header">
+        <span class="site-title">RCSVIT Archive</span>
     </header>
-    <main class="container">
-        <h2 id="gallery-title">Gallery</h2>
-        <div class="gallery-grid" id="gallery-grid"></div>
+
+    <main class="main-container">
+        <a href="index.html" class="back-btn">← Back to Years</a>
+
+        <section class="page-header">
+            <h1 class="page-title" id="gallery-title">Gallery</h1>
+            <p class="page-subtitle" id="gallery-subtitle"></p>
+        </section>
+
+        <div class="gallery-grid" id="gallery-grid">
+            <p>Loading media…</p>
+        </div>
     </main>
+
     <script type="module" src="js/gallery.js"></script>
 </body>
 </html>
