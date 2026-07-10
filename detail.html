@@ -15,20 +15,19 @@
     <main class="main-container">
         <a href="index.html" class="back-btn">← Back to Archive</a>
 
-        <!-- The whole detail view will be generated here -->
+        <!-- The entire detail view will be injected here -->
         <div id="detail-container">
             <p>Loading media…</p>
         </div>
     </main>
 
-    <script type="module" src="js/api.js"></script>
-    <script type="module">
-        import { fetchMediaById, fetchMedia } from './js/api.js';
-
+    <script>
+        // ── CONFIG ─────────────────────────────────────
+        const API_BASE = 'https://rcsvitcloud.onrender.com/api';
         const urlParams = new URLSearchParams(window.location.search);
-        const imageId = parseInt(urlParams.get('id')) || 1;
+        const mediaId = parseInt(urlParams.get('id')) || 1;
 
-        // Cloudinary helpers
+        // ── HELPERS ────────────────────────────────────
         function thumbnailUrl(originalUrl, mediaType) {
             if (!originalUrl) return '';
             if (mediaType === 'video') {
@@ -44,9 +43,7 @@
             return originalUrl.replace('/upload/', '/upload/q_auto,f_auto,w_1200/');
         }
 
-        function downloadUrl(originalUrl) { return originalUrl; }
-
-        // Download popup (hosting-cost warning)
+        // ── DOWNLOAD POPUP ─────────────────────────────
         function showDownloadPopup(imageUrl, title, callback) {
             const existing = document.getElementById('downloadPopup');
             if (existing) existing.remove();
@@ -71,12 +68,12 @@
             document.body.appendChild(overlay);
             overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
             document.getElementById('popupCopyBtn').addEventListener('click', () => {
-                const shareUrl = `https://rcsvitcloud.onrender.com/api/share/${imageId}`;
+                const shareUrl = `${API_BASE}/share/${mediaId}`;
                 navigator.clipboard.writeText(shareUrl);
                 const btn = document.getElementById('popupCopyBtn');
                 btn.textContent = '✅ Copied!';
                 // Track share
-                fetch(`https://rcsvitcloud.onrender.com/api/media/${imageId}/share`, { method: 'POST' }).catch(()=>{});
+                fetch(`${API_BASE}/media/${mediaId}/share`, { method: 'POST' }).catch(()=>{});
                 setTimeout(() => { btn.textContent = '📋 Copy Link'; overlay.remove(); }, 1500);
             });
             document.getElementById('popupDownloadBtn').addEventListener('click', () => {
@@ -105,21 +102,30 @@
             }
         }
 
+        // ── LOAD DETAIL ────────────────────────────────
         async function loadDetail() {
             const container = document.getElementById('detail-container');
             try {
-                const img = await fetchMediaById(imageId);
+                // 1. Fetch the single media item
+                const res = await fetch(`${API_BASE}/media/${mediaId}`);
+                if (!res.ok) {
+                    throw new Error(`Server returned ${res.status}`);
+                }
+                const json = await res.json();
+                // The endpoint returns { success: true, data: {...} }
+                const img = json.data || json;
+
                 document.title = `${img.title} — RCSVIT`;
 
-                // Track view silently
-                fetch(`https://rcsvitcloud.onrender.com/api/media/${imageId}/view`, { method: 'POST' }).catch(()=>{});
+                // 2. Track view (silent)
+                fetch(`${API_BASE}/media/${mediaId}/view`, { method: 'POST' }).catch(()=>{});
 
+                // 3. Build the detail view
                 const isVideo = img.media_type === 'video';
                 const mediaHtml = isVideo
                     ? `<video class="detail-img" src="${img.cloudinary_url}" controls autoplay style="width:100%; max-height:560px; background:#000;"></video>`
                     : `<img class="detail-img" src="${displayUrl(img.cloudinary_url, img.media_type)}" alt="${img.title}">`;
 
-                // Metadata table
                 const metaRows = [
                     ['Title', img.title || '—'],
                     ['Description', img.description || '—'],
@@ -154,29 +160,32 @@
                     </section>
                 `;
 
-                // Download button
+                // 4. Download button
                 document.getElementById('downloadBtn').addEventListener('click', () => {
-                    showDownloadPopup(downloadUrl(img.cloudinary_url), img.title || 'Media', () => {
-                        performDownload(downloadUrl(img.cloudinary_url), img.title || 'Media');
+                    showDownloadPopup(img.cloudinary_url, img.title || 'Media', () => {
+                        performDownload(img.cloudinary_url, img.title || 'Media');
                     });
                 });
 
-                // Copy Link
+                // 5. Copy link button
                 document.getElementById('copyLinkBtn').addEventListener('click', () => {
-                    const shareUrl = `https://rcsvitcloud.onrender.com/api/share/${imageId}`;
+                    const shareUrl = `${API_BASE}/share/${mediaId}`;
                     navigator.clipboard.writeText(shareUrl);
                     const btn = document.getElementById('copyLinkBtn');
                     btn.textContent = '✅ Copied!';
-                    fetch(`https://rcsvitcloud.onrender.com/api/media/${imageId}/share`, { method: 'POST' }).catch(()=>{});
+                    fetch(`${API_BASE}/media/${mediaId}/share`, { method: 'POST' }).catch(()=>{});
                     setTimeout(() => { btn.textContent = 'Copy Link'; }, 2000);
                 });
 
-                // Previous / Next (all media in same year)
+                // 6. Previous / Next navigation
                 const yearId = img.year_id;
                 if (yearId) {
-                    const allData = await fetchMedia({ year_id: yearId, limit: 100 });
-                    const ids = (allData.data || []).map(i => i.id);
-                    const currentIndex = ids.indexOf(imageId);
+                    const allRes = await fetch(`${API_BASE}/media?year_id=${yearId}&limit=100`);
+                    const allData = await allRes.json();
+                    const allItems = allData.data || allData || [];
+                    const ids = allItems.map(i => i.id);
+                    const currentIndex = ids.indexOf(mediaId);
+
                     document.getElementById('prevBtn').addEventListener('click', () => {
                         const newIndex = currentIndex > 0 ? currentIndex - 1 : ids.length - 1;
                         window.location.href = `detail.html?id=${ids[newIndex]}`;
@@ -187,9 +196,10 @@
                     });
                 }
 
-                // Related media (4 random from same year)
-                const relatedData = await fetchMedia({ year_id: yearId, limit: 4 });
-                const relatedItems = (relatedData.data || []).filter(r => r.id !== imageId).slice(0, 4);
+                // 7. Related media (4 from same year)
+                const relatedRes = await fetch(`${API_BASE}/media?year_id=${yearId}&limit=4`);
+                const relatedData = await relatedRes.json();
+                const relatedItems = (relatedData.data || []).filter(r => r.id !== mediaId).slice(0, 4);
                 const relatedGrid = document.getElementById('relatedGrid');
                 relatedGrid.innerHTML = relatedItems.map(r => {
                     const isVid = r.media_type === 'video';
@@ -210,8 +220,13 @@
                 }).join('');
 
             } catch (err) {
-                container.innerHTML = '<p>⚠️ Media not found. It may have been removed or the ID is incorrect.</p>';
-                console.error('Detail page error:', err);
+                container.innerHTML = `
+                    <p style="color:#c62828; font-weight:500;">
+                        ⚠️ Could not load this media.<br>
+                        <small>Error: ${err.message}</small><br>
+                        <small>Please check that the media ID (${mediaId}) exists.</small>
+                    </p>`;
+                console.error('Detail load error:', err);
             }
         }
 
