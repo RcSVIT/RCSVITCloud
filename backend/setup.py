@@ -18,6 +18,7 @@ async def create_tables():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             year INTEGER NOT NULL,
             president_name TEXT,
+            cover_image TEXT DEFAULT '',
             created_at TEXT DEFAULT (datetime('now'))
         );
         """,
