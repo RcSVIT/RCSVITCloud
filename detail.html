@@ -13,12 +13,15 @@
     </header>
 
     <main class="main-container">
-        <a href="javascript:history.back()" class="back-btn">← Back</a>
+        <a href="index.html" class="back-btn">← Back to Archive</a>
 
-        <!-- The JavaScript will build everything inside this div -->
-        <div id="detail-container"></div>
+        <!-- The whole detail view will be generated here -->
+        <div id="detail-container">
+            <p>Loading media…</p>
+        </div>
     </main>
 
+    <script type="module" src="js/api.js"></script>
     <script type="module">
         import { fetchMediaById, fetchMedia } from './js/api.js';
 
@@ -103,26 +106,14 @@
         }
 
         async function loadDetail() {
+            const container = document.getElementById('detail-container');
             try {
                 const img = await fetchMediaById(imageId);
                 document.title = `${img.title} — RCSVIT`;
 
-                // Track view
+                // Track view silently
                 fetch(`https://rcsvitcloud.onrender.com/api/media/${imageId}/view`, { method: 'POST' }).catch(()=>{});
 
-                let mediaItems = [img];
-                // If groups are supported, fetch them; otherwise single media
-                if (img.parent_id) {
-                    try {
-                        const groupRes = await fetch(`https://rcsvitcloud.onrender.com/api/groups/${img.parent_id}`);
-                        if (groupRes.ok) {
-                            const groupData = await groupRes.json();
-                            mediaItems = groupData.items || [img];
-                        }
-                    } catch (e) {}
-                }
-
-                const container = document.getElementById('detail-container');
                 const isVideo = img.media_type === 'video';
                 const mediaHtml = isVideo
                     ? `<video class="detail-img" src="${img.cloudinary_url}" controls autoplay style="width:100%; max-height:560px; background:#000;"></video>`
@@ -180,7 +171,7 @@
                     setTimeout(() => { btn.textContent = 'Copy Link'; }, 2000);
                 });
 
-                // Previous / Next (fetch all media in the same year)
+                // Previous / Next (all media in same year)
                 const yearId = img.year_id;
                 if (yearId) {
                     const allData = await fetchMedia({ year_id: yearId, limit: 100 });
@@ -219,7 +210,8 @@
                 }).join('');
 
             } catch (err) {
-                document.getElementById('detail-container').innerHTML = '<p>Media not found.</p>';
+                container.innerHTML = '<p>⚠️ Media not found. It may have been removed or the ID is incorrect.</p>';
+                console.error('Detail page error:', err);
             }
         }
 
