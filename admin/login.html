@@ -4,47 +4,64 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login – RCSVIT</title>
-    <link rel="stylesheet" href="../css/styles.css">
     <style>
-        /* Login page overrides – centers the box vertically */
-        .login-body {
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .site-header {
+            background: #000;
+            height: 70px;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: calc(100vh - 70px);
-            background: #f4f4f4;
-            margin: 0;
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            position: sticky;
+            top:0;
+            z-index: 100;
+        }
+        .login-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
         .login-card {
             background: #fff;
             border: 1px solid #d9d9d9;
             border-radius: 12px;
-            padding: 40px 30px;
+            padding: 30px 20px;
             width: 100%;
-            max-width: 400px;
+            max-width: 380px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.06);
         }
         .login-card h2 {
             text-align: center;
-            font-weight: 700;
+            margin-bottom: 20px;
             font-size: 1.6rem;
-            margin-bottom: 24px;
         }
         .form-group {
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
         .form-group label {
             display: block;
             font-weight: 600;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             color: #333;
         }
         .form-group input {
             width: 100%;
-            padding: 11px 14px;
+            padding: 12px 14px;
             border: 1px solid #d9d9d9;
             border-radius: 8px;
-            font-size: 0.95rem;
+            font-size: 16px;
             transition: border 0.2s;
         }
         .form-group input:focus {
@@ -58,34 +75,17 @@
             color: #fff;
             border: none;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            transition: background 0.2s;
         }
-        .btn-login:hover {
-            background: #222;
-        }
-        .btn-login:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-        .message {
-            text-align: center;
-            margin-bottom: 15px;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-        .message-error {
-            color: #c62828;
-        }
-        .message-success {
-            color: #2e7d32;
-        }
+        .btn-login:hover { background: #222; }
+        .btn-login:disabled { background: #666; cursor: not-allowed; }
         .spinner {
             display: none;
             width: 18px;
@@ -95,39 +95,50 @@
             border-radius: 50%;
             animation: spin 0.6s linear infinite;
         }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .btn-login.loading .spinner { display: inline-block; }
+        .btn-login.loading .btn-text { display: none; }
+
+        .message {
+            text-align: center;
+            margin-bottom: 15px;
+            font-weight: 500;
+            font-size: 0.9rem;
         }
-        .btn-login.loading .spinner {
-            display: inline-block;
+        .message-error { color: #c62828; }
+        .message-success { color: #2e7d32; }
+        .message-info { color: #555; }
+
+        footer {
+            border-top: 1px solid #d9d9d9;
+            padding: 14px 20px;
+            text-align: left;
+            font-size: 0.85rem;
+            color: #666;
+            background: #fff;
         }
-        .btn-login.loading .btn-text {
-            display: none;
-        }
+        footer a { color: #333; text-decoration: none; font-weight: 500; }
     </style>
 </head>
 <body>
-
-    <!-- Black header – matches all pages -->
     <header class="site-header">
-        <span class="site-title">RCSVIT Admin</span>
+        RCSVIT Admin
     </header>
 
-    <!-- Login box centered on the page -->
-    <div class="login-body">
+    <div class="login-container">
         <div class="login-card">
             <h2>Admin Login</h2>
             <div id="message" class="message"></div>
-            <form id="login-form">
+            <form id="loginForm">
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" required placeholder="admin@club.com">
+                    <input type="email" id="email" required placeholder="admin@club.com" value="rotaract_svit@saividya.ac.in">
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" required placeholder="••••••••">
+                    <input type="password" id="password" required placeholder="••••••••" value="RcSVIT@250822">
                 </div>
-                <button type="submit" class="btn-login" id="login-btn">
+                <button type="submit" class="btn-login" id="loginBtn">
                     <span class="spinner"></span>
                     <span class="btn-text">Login</span>
                 </button>
@@ -135,6 +146,62 @@
         </div>
     </div>
 
-    <script type="module" src="../js/admin.js"></script>
+    <footer>
+        made by 
+        <a href="https://x.com/SkywardAdi" target="_blank" rel="noopener">x/skyward (@SkywardAdi)</a>
+        &amp;
+        <a href="https://x.com/adeep_ag" target="_blank" rel="noopener">x/adeep_ag (@adeep_ag)</a>
+    </footer>
+
+    <script>
+        const API_BASE = 'https://rcsvitcloud.onrender.com/api';
+        const form = document.getElementById('loginForm');
+        const btn = document.getElementById('loginBtn');
+        const msgDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            // Show loading
+            btn.classList.add('loading');
+            btn.disabled = true;
+            msgDiv.textContent = '';
+            msgDiv.className = 'message';
+
+            try {
+                const res = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    // Show the exact error from the server
+                    msgDiv.textContent = data.detail || `Error ${res.status}: Login failed`;
+                    msgDiv.className = 'message message-error';
+                } else if (data.access_token) {
+                    localStorage.setItem('admin_token', data.access_token);
+                    msgDiv.textContent = 'Login successful! Redirecting…';
+                    msgDiv.className = 'message message-success';
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 800);
+                } else {
+                    msgDiv.textContent = 'Login succeeded but no token received.';
+                    msgDiv.className = 'message message-error';
+                }
+            } catch (err) {
+                msgDiv.textContent = 'Network error. Is the server awake? Try again in 30s.';
+                msgDiv.className = 'message message-error';
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>
