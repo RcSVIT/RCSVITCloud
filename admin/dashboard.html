@@ -579,11 +579,12 @@
             }
         };
 
-        // ── MANAGE ADMINS ──
+        // ── MANAGE ADMINS (trailing slash fixed) ──
         async function loadAdminsTab() {
             const tbody = document.getElementById('adminTableBody');
             tbody.innerHTML = '<tr><td colspan="3">Loading…</td></tr>';
             try {
+                // FIX: trailing slash added
                 const res = await fetch(`${API_BASE}/admin/users/`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
@@ -615,6 +616,7 @@
             }
         }
 
+        // FIX: trailing slash in POST
         document.getElementById('addAdminForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('newAdminEmail').value;
