@@ -584,7 +584,7 @@
             const tbody = document.getElementById('adminTableBody');
             tbody.innerHTML = '<tr><td colspan="3">Loading…</td></tr>';
             try {
-                const res = await fetch(`${API_BASE}/admin/users`, {
+                const res = await fetch(`${API_BASE}/admin/users/`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (!res.ok) {
@@ -624,7 +624,7 @@
             msgDiv.className = 'message';
 
             try {
-                const res = await fetch(`${API_BASE}/admin/users`, {
+                const res = await fetch(`${API_BASE}/admin/users/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
