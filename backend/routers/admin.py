@@ -32,23 +32,33 @@ async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(
 class YearCreate(BaseModel):
     year: int
     president_name: Optional[str] = None
+    cover_image: Optional[str] = None
 
 class YearUpdate(BaseModel):
     president_name: Optional[str] = None
+    cover_image: Optional[str] = None
 
 @router.post("/years")
 async def create_year(year: YearCreate, current=Depends(get_current_admin)):
-    # No UUID – let D1 auto‑increment the integer primary key
-    sql = "INSERT INTO years (year, president_name) VALUES (?, ?)"
-    result = await db.query(sql, [year.year, year.president_name])
-    # D1 returns the last inserted ID in the meta if you use RETURNING, but we'll just return success
+    sql = "INSERT INTO years (year, president_name, cover_image) VALUES (?, ?, ?)"
+    await db.query(sql, [year.year, year.president_name, year.cover_image or ''])
     return {"success": True}
 
 @router.put("/years/{year_id}")
 async def update_year(year_id: int, update: YearUpdate, current=Depends(get_current_admin)):
-    # Now expects integer ID
-    sql = "UPDATE years SET president_name = ? WHERE id = ?"
-    await db.query(sql, [update.president_name, year_id])
+    fields = []
+    params = []
+    if update.president_name is not None:
+        fields.append("president_name = ?")
+        params.append(update.president_name)
+    if update.cover_image is not None:
+        fields.append("cover_image = ?")
+        params.append(update.cover_image)
+    if not fields:
+        return {"success": True, "message": "No changes"}
+    params.append(year_id)
+    sql = f"UPDATE years SET {', '.join(fields)} WHERE id = ?"
+    await db.query(sql, params)
     return {"success": True}
 
 @router.delete("/years/{year_id}")
@@ -63,7 +73,7 @@ async def get_years(current=Depends(get_current_admin)):
 
 # ---- Media CRUD ----
 class MediaCreate(BaseModel):
-    year_id: int                     # changed to int
+    year_id: int
     title: Optional[str] = None
     description: Optional[str] = None
     capture_date: Optional[str] = None
@@ -76,7 +86,7 @@ class MediaCreate(BaseModel):
     cloudinary_url: str
     media_type: str
     file_size: int = 0
-    parent_id: Optional[int] = None  # changed to int
+    parent_id: Optional[int] = None
     sort_order: int = 0
 
 class MediaUpdate(BaseModel):
@@ -92,7 +102,6 @@ class MediaUpdate(BaseModel):
 
 @router.post("/media")
 async def create_media(media: MediaCreate, current=Depends(get_current_admin)):
-    # No UUID – let D1 auto‑increment the primary key
     sql = """INSERT INTO media (
         year_id, title, description, capture_date, upload_date,
         location, people, event, tags, cloudinary_public_id,
