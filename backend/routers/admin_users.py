@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from routers.admin import get_current_admin
 
-# Disable automatic trailing-slash redirects to avoid 403 on /api/admin/users
+# Disable automatic trailing‑slash redirects to avoid CORS issues
 router = APIRouter(prefix="/admin/users", tags=["admin_users"], redirect_slashes=False)
 db = D1Wrapper()
 
