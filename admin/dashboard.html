@@ -62,6 +62,32 @@
 
         .mobile-toggle { display:none; position:fixed; top:80px; left:10px; z-index:1100; background:#000; color:#fff; border:none; padding:8px 12px; border-radius:6px; font-size:20px; }
 
+        /* Upload specific – mobile friendly */
+        .upload-file-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #000;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .upload-file-btn:hover { background: #222; }
+        .file-preview { display:flex; align-items:center; gap:15px; background:#f4f4f4; padding:10px 15px; border-radius:8px; margin-bottom:15px; }
+        .file-preview img, .file-preview video { width:80px; height:60px; object-fit:cover; border-radius:6px; }
+        .file-info { flex:1; }
+        .file-info .file-name { font-weight:600; margin-bottom:3px; }
+        .file-info .file-size { font-size:12px; color:#777; }
+        .remove-file { background:none; border:none; color:#c62828; cursor:pointer; font-size:18px; }
+        .progress-bar { height:8px; background:#e0e0e0; border-radius:4px; margin:15px 0; overflow:hidden; }
+        .progress-fill { height:100%; background:#000; width:0%; transition:width 0.4s; }
+        .message { margin-bottom:15px; font-weight:500; }
+        .message-success { color:#2e7d32; }
+        .message-error { color:#c62828; }
+
         @media (max-width:900px) {
             .sidebar { transform:translateX(-240px); }
             .sidebar.open { transform:translateX(0); }
@@ -105,18 +131,17 @@
             <div class="panel"><h3><i class="fas fa-chart-line"></i> Visitor Trend (Last 7 Days)</h3><canvas id="visitorChart" height="80"></canvas></div>
         </div>
 
-        <!-- Upload Tab -->
+        <!-- Upload Tab (mobile friendly) -->
         <div class="tab-section" id="tab-upload">
             <h2 style="margin-bottom:20px;">Upload Media</h2>
             <div class="form-card">
                 <div id="uploadMessage"></div>
                 <form id="uploadForm">
-                    <div class="drop-zone" id="dropZone">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p><strong>Drag & drop files here</strong> or <span class="browse-btn">browse</span></p>
-                        <p style="font-size:13px; color:#888;">Accepted: JPG, PNG, WebP, MP4, WebM • Maximum size: <strong>10 MB</strong></p>
-                        <input type="file" id="fileInput" accept="image/*,video/*" style="display:none;">
-                    </div>
+                    <!-- Mobile-friendly file input -->
+                    <label class="upload-file-btn" for="fileInput">Choose File</label>
+                    <input type="file" id="fileInput" accept="image/*,video/*" style="display:none;" onchange="handleFileSelect()">
+
+                    <!-- File preview -->
                     <div id="filePreview" class="file-preview" style="display:none;">
                         <div id="previewContainer"></div>
                         <div class="file-info">
@@ -237,7 +262,7 @@
             window.location.href = 'login.html';
         }
 
-        // Load dashboard stats (safe)
+        // Load dashboard stats
         async function loadDashboard() {
             const statsGrid = document.getElementById('statsGrid');
             try {
@@ -265,7 +290,7 @@
                 `;
                 updateCharts(data.top_views, data.top_shares);
             } catch (e) {
-                statsGrid.innerHTML = '<p>Could not load stats. Using cached data.</p>';
+                statsGrid.innerHTML = '<p>Could not load stats.</p>';
             }
         }
         loadDashboard();
@@ -306,9 +331,152 @@
             }
         }
 
-        // Upload & drop zone (keep your existing code)
-        // ... (paste your existing upload JS here) ...
-        // I'll assume you already have that working. If not, I can provide the full upload script.
+        // ── Upload logic (mobile friendly) ──
+        let selectedFile = null;
+        const fileInput = document.getElementById('fileInput');
+        const filePreview = document.getElementById('filePreview');
+        const previewContainer = document.getElementById('previewContainer');
+        const fileNameEl = document.getElementById('fileName');
+        const fileSizeEl = document.getElementById('fileSize');
+        const removeFileBtn = document.getElementById('removeFile');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const uploadMessage = document.getElementById('uploadMessage');
+
+        window.handleFileSelect = function() {
+            const file = fileInput.files[0];
+            if (!file) return;
+            if (file.size > 10 * 1024 * 1024) {
+                showUploadMessage('File exceeds 10 MB limit.', 'error');
+                resetFile();
+                return;
+            }
+            selectedFile = file;
+            fileNameEl.textContent = file.name;
+            fileSizeEl.textContent = formatBytes(file.size);
+            filePreview.style.display = 'flex';
+            previewContainer.innerHTML = '';
+            if (file.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                previewContainer.appendChild(img);
+            } else if (file.type.startsWith('video/')) {
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(file);
+                video.controls = false;
+                video.muted = true;
+                video.preload = 'metadata';
+                video.onloadeddata = () => video.currentTime = 1;
+                video.onseeked = () => video.pause();
+                previewContainer.appendChild(video);
+            }
+        };
+
+        function resetFile() {
+            selectedFile = null;
+            fileInput.value = '';
+            filePreview.style.display = 'none';
+            previewContainer.innerHTML = '';
+            fileNameEl.textContent = '';
+            fileSizeEl.textContent = '';
+            progressBar.style.display = 'none';
+            progressFill.style.width = '0%';
+        }
+
+        removeFileBtn.addEventListener('click', resetFile);
+
+        function showUploadMessage(msg, type) {
+            uploadMessage.textContent = msg;
+            uploadMessage.className = 'message message-' + type;
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function loadYearsDropdown() {
+            const res = await fetch(`${API_BASE}/admin/years`, { headers: { 'Authorization': 'Bearer ' + token } });
+            const data = await res.json();
+            const years = data.data || [];
+            const select = document.getElementById('upload-year');
+            if (select) select.innerHTML = years.map(y => `<option value="${y.id}">${y.year}</option>`).join('');
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedFile) {
+                showUploadMessage('Please select a file.', 'error');
+                return;
+            }
+            uploadMessage.textContent = '';
+            progressBar.style.display = 'block';
+            progressFill.style.width = '0%';
+            let fakeWidth = 0;
+            const interval = setInterval(() => {
+                if (fakeWidth < 90) {
+                    fakeWidth += Math.random() * 15 + 5;
+                    if (fakeWidth > 90) fakeWidth = 90;
+                    progressFill.style.width = fakeWidth + '%';
+                }
+            }, 250);
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('upload_preset', 'club_unsigned');
+
+            try {
+                const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/jypxyqtu/auto/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const cloudData = await uploadRes.json();
+                if (!cloudData.secure_url) throw new Error('Cloudinary upload failed');
+
+                const payload = {
+                    year_id: parseInt(document.getElementById('upload-year').value),
+                    title: document.getElementById('title').value || selectedFile.name,
+                    description: document.getElementById('description').value,
+                    category: document.getElementById('category').value,
+                    country: document.getElementById('country').value,
+                    source: document.getElementById('source').value,
+                    capture_date: document.getElementById('capture_date').value,
+                    resolution: document.getElementById('resolution').value,
+                    tags: document.getElementById('tags').value,
+                    cloudinary_public_id: cloudData.public_id,
+                    cloudinary_url: cloudData.secure_url,
+                    media_type: cloudData.resource_type,
+                    file_size: selectedFile.size
+                };
+
+                const metaRes = await fetch(`${API_BASE}/admin/media`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const metaData = await metaRes.json();
+
+                clearInterval(interval);
+                progressFill.style.width = '100%';
+                if (metaRes.ok) {
+                    showUploadMessage('✅ Upload successful!', 'success');
+                    resetFile();
+                } else {
+                    showUploadMessage('Error: ' + (metaData.detail || 'Metadata save failed'), 'error');
+                }
+            } catch (err) {
+                clearInterval(interval);
+                showUploadMessage('Error: ' + err.message, 'error');
+            } finally {
+                setTimeout(() => { progressBar.style.display = 'none'; }, 1200);
+            }
+        });
 
         // Manage media
         async function loadManageTab() {
@@ -334,7 +502,7 @@
             loadManageTab();
         };
 
-        // Manage admins (safe)
+        // Manage admins
         async function loadAdminsTab() {
             const tbody = document.getElementById('adminTableBody');
             try {
@@ -372,15 +540,6 @@
                 else { msg.textContent = data.detail || 'Error'; }
             } catch (e) { msg.textContent='Network error.'; }
         });
-
-        // load years dropdown for upload
-        async function loadYearsDropdown() {
-            const res = await fetch(`${API_BASE}/admin/years`, { headers: { 'Authorization': 'Bearer ' + token } });
-            const data = await res.json();
-            const years = data.data || [];
-            const select = document.getElementById('upload-year');
-            if (select) select.innerHTML = years.map(y => `<option value="${y.id}">${y.year}</option>`).join('');
-        }
     </script>
 </body>
 </html>
