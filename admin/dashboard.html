@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         /* Admin sidebar + main content layout (Novichok style) */
-        body { display: flex; min-height: 100vh; }
+        body { display: flex; min-height: 100vh; font-family: Arial, sans-serif; }
         .sidebar {
             width: 240px;
             background: #111;
@@ -34,7 +34,7 @@
             font-size: 15px;
             border-left: 4px solid transparent;
             cursor: pointer;
-            transition: background 0.2s, color 0.2s;
+            transition: 0.2s;
         }
         .sidebar a:hover, .sidebar a.active {
             background: #222;
@@ -64,7 +64,6 @@
         .tab-section { display: none; }
         .tab-section.active { display: block; }
 
-        /* Dashboard stats etc. (unchanged) */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin: 24px 0; }
         .stat-card { background: #fff; border: 1px solid #d9d9d9; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         .stat-card .number { font-size: 2rem; font-weight: 700; color: #000; }
@@ -102,8 +101,21 @@
         .remove-file { background: none; border: none; color: #c62828; cursor: pointer; font-size: 18px; }
         .progress-bar { height: 8px; background: #e0e0e0; border-radius: 4px; margin: 15px 0; overflow: hidden; }
         .progress-fill { height: 100%; background: #000; width: 0%; transition: width 0.4s; }
-
         .mobile-toggle { display: none; position: fixed; top: 80px; left: 10px; z-index: 1100; background: #000; color: #fff; border: none; padding: 8px 12px; border-radius: 6px; font-size: 20px; }
+
+        .year-group { margin-bottom: 24px; }
+        .year-header { background: #f9f9f9; padding: 12px 20px; border-radius: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .year-header h4 { margin: 0; }
+        .year-media { display: none; padding: 16px; background: #fff; border-radius: 0 0 8px 8px; }
+        .year-media.open { display: block; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
+        .btn-primary { background: #000; color: #fff; }
+        .btn-primary:hover { background: #222; }
+        .btn-outline { background: transparent; border: 1px solid #bbb; color: #333; }
+        .btn-outline:hover { background: #f5f5f5; }
+        .btn-danger { background: #d32f2f; color: #fff; }
+        .btn-danger:hover { background: #b71c1c; }
+        .btn-block { width: 100%; }
 
         @media (max-width: 900px) {
             .sidebar { transform: translateX(-240px); }
@@ -116,15 +128,12 @@
 </head>
 <body>
 
-    <!-- Black header -->
     <header class="site-header">
         <span class="site-title">RCSVIT Admin</span>
     </header>
 
-    <!-- Mobile toggle -->
     <button class="mobile-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
 
-    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="brand"><i class="fas fa-shield-alt"></i> Admin</div>
         <a data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
@@ -136,7 +145,6 @@
         <a onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </aside>
 
-    <!-- Main content area -->
     <main class="main-content" id="mainContent">
 
         <!-- Dashboard Tab -->
@@ -144,14 +152,16 @@
             <h2 style="margin-bottom:20px;">Dashboard Overview</h2>
             <div class="stats-grid" id="statsGrid"></div>
             <div class="stats-grid" id="visitorStatsGrid"></div>
+            <div class="stats-grid" id="infraStatsGrid"></div>
             <div class="chart-row">
                 <div class="chart-box"><h3>Top 5 Views</h3><canvas id="viewsChart" height="150"></canvas></div>
                 <div class="chart-box"><h3>Top 5 Shares</h3><canvas id="sharesChart" height="150"></canvas></div>
             </div>
         </div>
 
-        <!-- Upload Tab -->
+        <!-- Upload Tab (unchanged) -->
         <div class="tab-section" id="tab-upload">
+            <!-- same as before – I'll keep it identical to the previous version for brevity -->
             <h2 style="margin-bottom:20px;">Upload Media</h2>
             <div class="table-wrap">
                 <div id="uploadMessage"></div>
@@ -196,19 +206,14 @@
             </div>
         </div>
 
-        <!-- Manage Media Tab -->
+        <!-- Manage Media Tab (grouped by year) -->
         <div class="tab-section" id="tab-manage">
             <h2 style="margin-bottom:20px;">Manage Media</h2>
             <div id="manageMessage" class="message"></div>
-            <div class="table-wrap">
-                <table class="media-table" id="mediaTable">
-                    <thead><tr><th>Preview</th><th>Title</th><th>Type</th><th>Views</th><th>Action</th></tr></thead>
-                    <tbody id="mediaTableBody"><tr><td colspan="5">Loading…</td></tr></tbody>
-                </table>
-            </div>
+            <div id="mediaByYear"></div>
         </div>
 
-        <!-- Manage Years Tab -->
+        <!-- Manage Years Tab (unchanged, but with cover image) -->
         <div class="tab-section" id="tab-years">
             <h2 style="margin-bottom:20px;">Manage Years</h2>
             <div style="margin-bottom:20px;">
@@ -264,6 +269,26 @@
             <div style="display:flex; gap:12px; justify-content:flex-end;">
                 <button id="createYearBtn" class="btn btn-primary">Create</button>
                 <button class="btn btn-outline" onclick="document.getElementById('addYearModal').classList.remove('active')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Media Modal -->
+    <div id="editMediaModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>Edit Media</h3>
+            <input type="hidden" id="edit-media-id">
+            <div class="form-group"><label>Title</label><input type="text" id="edit-title"></div>
+            <div class="form-group"><label>Description</label><textarea id="edit-description" rows="2"></textarea></div>
+            <div class="form-group"><label>Category</label><input type="text" id="edit-category"></div>
+            <div class="form-group"><label>Country</label><input type="text" id="edit-country"></div>
+            <div class="form-group"><label>Source</label><input type="text" id="edit-source"></div>
+            <div class="form-group"><label>Capture Date</label><input type="date" id="edit-capture_date"></div>
+            <div class="form-group"><label>Resolution</label><input type="text" id="edit-resolution"></div>
+            <div class="form-group"><label>Tags</label><input type="text" id="edit-tags"></div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button id="saveEditBtn" class="btn btn-primary">Save</button>
+                <button class="btn btn-outline" onclick="document.getElementById('editMediaModal').classList.remove('active')">Cancel</button>
             </div>
         </div>
     </div>
