@@ -2,7 +2,7 @@ import { apiFetch } from './api.js';
 
 const CLOUDINARY_CLOUD_NAME = 'jypxyqtu';
 
-// --- Login (unchanged) ---
+// --- Login ---
 async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('email').value;
@@ -71,7 +71,7 @@ async function loadDashboard() {
         loadMediaTable();
         loadYearsDropdown();
         loadYearsTable();
-        loadAdmins().catch(() => {});   // <-- safe wrapper
+        loadAdmins().catch(() => {});
     } catch (e) {
         alert('Error loading dashboard');
     }
@@ -151,7 +151,6 @@ async function loadAdmins() {
         const data = await apiFetch('/admin/users/');
         const admins = data || [];
         if (!Array.isArray(admins)) {
-            // This user is not a super admin – show a message
             container.innerHTML = '<p>Only super admins can manage users.</p>';
             return;
         }
@@ -162,7 +161,6 @@ async function loadAdmins() {
             </div>
         `).join('');
     } catch (e) {
-        // 403 or network error – show a friendly message
         container.innerHTML = '<p>Only super admins can manage users.</p>';
     }
 }
@@ -173,7 +171,21 @@ window.deleteAdmin = async function(id) {
     loadAdmins();
 };
 
-// --- Upload ---
+// --- Upload cover image helper ---
+async function uploadCoverImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'club_unsigned');
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+    });
+    const data = await res.json();
+    if (!data.secure_url) throw new Error('Cover upload failed');
+    return data.secure_url;
+}
+
+// --- Upload Media ---
 async function uploadMedia() {
     const file = document.getElementById('upload-file').files[0];
     if (!file) return alert('Select a file');
@@ -223,18 +235,34 @@ async function uploadMedia() {
     }
 }
 
-// --- Create year ---
+// --- Create year (with cover image) ---
 async function createYear() {
     const year = document.getElementById('new-year').value;
     const president = document.getElementById('new-president').value;
     if (!year) return alert('Enter a year');
+
+    let coverUrl = '';
+    const fileInput = document.getElementById('year-cover-file');
+    if (fileInput && fileInput.files.length > 0) {
+        try {
+            coverUrl = await uploadCoverImage(fileInput.files[0]);
+        } catch (e) {
+            alert('Cover image upload failed: ' + e.message);
+            return;
+        }
+    }
+
     await apiFetch('/admin/years', {
         method: 'POST',
-        body: JSON.stringify({ year: parseInt(year), president_name: president || null })
+        body: JSON.stringify({ year: parseInt(year), president_name: president || null, cover_image: coverUrl || null })
     });
+
     alert('Year created');
     document.getElementById('new-year').value = '';
     document.getElementById('new-president').value = '';
+    if (fileInput) fileInput.value = '';
+    const preview = document.getElementById('year-cover-preview');
+    if (preview) preview.style.display = 'none';
     document.getElementById('create-year-modal').classList.remove('active');
     loadYearsDropdown();
     loadYearsTable();
@@ -249,6 +277,21 @@ function logout() {
 
 // --- Event listeners ---
 document.addEventListener('DOMContentLoaded', () => {
+    // Cover image preview
+    const coverInput = document.getElementById('year-cover-file');
+    if (coverInput) {
+        coverInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            const preview = document.getElementById('year-cover-preview');
+            if (file) {
+                preview.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+        });
+    }
+
     if (document.getElementById('login-form')) {
         document.getElementById('login-form').addEventListener('submit', handleLogin);
     }
