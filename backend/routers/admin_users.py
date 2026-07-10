@@ -18,7 +18,7 @@ class AdminOut(BaseModel):
     id: int
     email: str
     role: str
-    created_at: Optional[str] = None   # safer as string
+    created_at: Optional[str] = None
 
 async def get_super_admin(current=Depends(get_current_admin)):
     if current["role"] != "super":
@@ -28,7 +28,6 @@ async def get_super_admin(current=Depends(get_current_admin)):
 @router.get("/", response_model=List[AdminOut])
 async def list_admins(current=Depends(get_current_admin)):
     rows = await db.query("SELECT id, email, role, created_at FROM admins ORDER BY created_at")
-    # Normalize created_at to string if it's a number
     for row in rows:
         if isinstance(row.get("created_at"), (int, float)):
             row["created_at"] = str(row["created_at"])
