@@ -79,8 +79,6 @@
         .message { margin-bottom:15px; font-weight:500; }
         .message-success { color:#2e7d32; }
         .message-error { color:#c62828; }
-        .info-box { background:#f9f9f9; border:1px solid #e0e0e0; border-radius:8px; padding:15px; margin-bottom:20px; font-size:14px; color:#555; }
-        .info-box strong { color:#000; }
 
         @media (max-width:900px) {
             .sidebar { transform:translateX(-240px); }
@@ -266,7 +264,7 @@
         // ── DASHBOARD (real data) ──
         async function loadDashboard() {
             try {
-                const res = await fetch(`${API_BASE}/admin/stats`, {
+                const res = await fetch(`${API_BASE}/stats/dashboard`, {
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (!res.ok) throw new Error('Failed');
@@ -300,7 +298,6 @@
         loadDashboard();
 
         function updateCharts(topViews, topShares) {
-            // Destroy old charts
             const chart1 = Chart.getChart('topMediaChart');
             if (chart1) chart1.destroy();
             const chart2 = Chart.getChart('visitorChart');
@@ -326,7 +323,7 @@
                         labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
                         datasets: [{
                             label: 'Visitors',
-                            data: [380,420,450,390,480,520,342], // replace with real daily data later
+                            data: [380,420,450,390,480,520,342],
                             borderColor: '#000',
                             backgroundColor: 'rgba(0,0,0,0.05)',
                             fill: true,
@@ -456,10 +453,9 @@
 
             const formData = new FormData();
             formData.append('file', selectedFile);
-            formData.append('upload_preset', 'club_unsigned'); // Cloudinary upload preset
+            formData.append('upload_preset', 'club_unsigned');
 
             try {
-                // 1. Upload to Cloudinary
                 const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/jypxyqtu/auto/upload`, {
                     method: 'POST',
                     body: formData
@@ -467,7 +463,6 @@
                 const cloudData = await uploadRes.json();
                 if (!cloudData.secure_url) throw new Error('Cloudinary upload failed');
 
-                // 2. Save metadata to backend
                 const payload = {
                     year_id: parseInt(document.getElementById('upload-year').value),
                     title: document.getElementById('title').value || selectedFile.name,
@@ -523,15 +518,17 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // ── MANAGE MEDIA ──
+        // ── MANAGE MEDIA (uses admin endpoint) ──
         async function loadManageTab() {
             const tbody = document.getElementById('mediaTableBody');
             tbody.innerHTML = '<tr><td colspan="5">Loading…</td></tr>';
             try {
-                const res = await fetch(`${API_BASE}/media?limit=50`);
+                const res = await fetch(`${API_BASE}/admin/media?limit=50`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
                 const data = await res.json();
-                const items = data.items || data.data || data;
-                if (!items || items.length === 0) {
+                const items = data.data || [];
+                if (!items.length) {
                     tbody.innerHTML = '<tr><td colspan="5">No media found.</td></tr>';
                     return;
                 }
@@ -545,7 +542,7 @@
                         <td>${thumb}</td>
                         <td>${item.title}</td>
                         <td>${item.media_type || 'image'}</td>
-                        <td>${item.uploaded_at || item.capture_date || '—'}</td>
+                        <td>${item.upload_date || item.capture_date || '—'}</td>
                         <td>
                             <button class="btn btn-outline" style="margin-right:5px;" onclick="editMedia(${item.id})">Edit</button>
                             <button class="btn btn-danger" onclick="deleteMedia(${item.id})">Delete</button>
@@ -591,7 +588,6 @@
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 if (!res.ok) {
-                    // if 403, show message
                     if (res.status === 403) {
                         tbody.innerHTML = '<tr><td colspan="3">Only super admins can view this list.</td></tr>';
                     } else {
