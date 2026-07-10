@@ -39,7 +39,7 @@ async def startup():
         await db.query(sql, [admin_email, hashed, "super"])
         print(f"Super admin created: {admin_email}")
 
-@app.get("/")
+@app.get("/", methods=["GET", "HEAD"])
 async def root():
     return {"status": "Club Media API is running"}
 
