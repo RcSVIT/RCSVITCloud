@@ -1,5 +1,4 @@
-import httpx
-import os
+import os, httpx
 
 class D1Wrapper:
     def __init__(self):
