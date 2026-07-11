@@ -1,5 +1,5 @@
 import os, cloudinary, cloudinary.uploader
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from database import D1Wrapper
 from utils.security import decode_access_token
@@ -69,7 +69,30 @@ async def get_years(current=Depends(get_current_admin)):
     rows = await db.query("SELECT * FROM years ORDER BY year DESC")
     return {"success": True, "data": rows}
 
-# ── Media CRUD (simplified, no category/country/source/resolution/event/tags) ──
+# ── NEW: Cover image upload endpoint ──
+@router.post("/years/{year_id}/cover")
+async def upload_year_cover(
+    year_id: int,
+    file: UploadFile = File(...),
+    current=Depends(get_current_admin)
+):
+    # Upload to Cloudinary (folder rcsvit_covers)
+    contents = await file.read()
+    try:
+        upload_result = cloudinary.uploader.upload(
+            contents,
+            folder="rcsvit_covers",
+            resource_type="image"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
+
+    cover_url = upload_result["secure_url"]
+    # Save the URL in the years table
+    await db.query("UPDATE years SET cover_image = ? WHERE id = ?", [cover_url, year_id])
+    return {"success": True, "cover_image": cover_url}
+
+# ── Media CRUD (simplified fields) ──
 class MediaCreate(BaseModel):
     year_id: int
     title: str
