@@ -16,6 +16,7 @@ tabs.forEach(tab => {
         tab.classList.add('active');
         document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
         if (tab.dataset.tab === 'manage') loadManageTab();
+        if (tab.dataset.tab === 'years') loadYearsTab();
         if (tab.dataset.tab === 'admins') loadAdminsTab();
         if (tab.dataset.tab === 'dashboard') loadDashboard();
         if (tab.dataset.tab === 'upload') loadYearsDropdown();
@@ -98,7 +99,7 @@ function updateCharts(topViews, topShares) {
     const list = document.getElementById('topSharedList');
     if (list && topShares?.length) {
         list.innerHTML = topShares.map(m => `
-            <li>${m.media_type==='video' ? `<video src="${m.url}" muted style="width:40px;height:30px;"></video>` : `<img src="${m.url}" style="width:40px;height:30px;">`}
+            <li>${m.media_type==='video' ? `<video src="${m.cloudinary_url}" muted style="width:40px;height:30px;"></video>` : `<img src="${m.cloudinary_url}" style="width:40px;height:30px;">`}
             <span class="name">${m.title}</span><span class="count">${m.shares_count} shares</span></li>
         `).join('');
     }
