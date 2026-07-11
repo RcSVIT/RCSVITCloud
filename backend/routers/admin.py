@@ -40,7 +40,10 @@ class YearUpdate(BaseModel):
 async def create_year(year: YearCreate, current=Depends(get_current_admin)):
     sql = "INSERT INTO years (year, president_name, cover_image) VALUES (?, ?, ?)"
     await db.query(sql, [year.year, year.president_name, year.cover_image or ''])
-    return {"success": True}
+    # Retrieve the newly created ID
+    rows = await db.query("SELECT id FROM years WHERE year = ? ORDER BY id DESC LIMIT 1", [year.year])
+    new_id = rows[0]["id"] if rows else None
+    return {"success": True, "id": new_id}
 
 @router.put("/years/{year_id}")
 async def update_year(year_id: int, update: YearUpdate, current=Depends(get_current_admin)):
@@ -66,17 +69,21 @@ async def delete_year(year_id: int, current=Depends(get_current_admin)):
 
 @router.get("/years")
 async def get_years(current=Depends(get_current_admin)):
-    rows = await db.query("SELECT * FROM years ORDER BY year DESC")
+    sql = """
+        SELECT y.*, 
+               (SELECT COUNT(*) FROM media WHERE media.year_id = y.id) AS media_count
+        FROM years y ORDER BY year DESC
+    """
+    rows = await db.query(sql)
     return {"success": True, "data": rows}
 
-# ── NEW: Cover image upload endpoint ──
+# ── Cover image upload endpoint ──
 @router.post("/years/{year_id}/cover")
 async def upload_year_cover(
     year_id: int,
     file: UploadFile = File(...),
     current=Depends(get_current_admin)
 ):
-    # Upload to Cloudinary (folder rcsvit_covers)
     contents = await file.read()
     try:
         upload_result = cloudinary.uploader.upload(
@@ -88,7 +95,6 @@ async def upload_year_cover(
         raise HTTPException(status_code=500, detail=f"Cloudinary upload failed: {str(e)}")
 
     cover_url = upload_result["secure_url"]
-    # Save the URL in the years table
     await db.query("UPDATE years SET cover_image = ? WHERE id = ?", [cover_url, year_id])
     return {"success": True, "cover_image": cover_url}
 
