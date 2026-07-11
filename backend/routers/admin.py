@@ -1,6 +1,4 @@
-import os
-import cloudinary
-import cloudinary.uploader
+import os, cloudinary, cloudinary.uploader
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from database import D1Wrapper
@@ -28,7 +26,7 @@ async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(
         raise HTTPException(status_code=401, detail="Admin not found")
     return rows[0]
 
-# ---- Year CRUD ----
+# ── Year CRUD ──
 class YearCreate(BaseModel):
     year: int
     president_name: Optional[str] = None
@@ -71,17 +69,14 @@ async def get_years(current=Depends(get_current_admin)):
     rows = await db.query("SELECT * FROM years ORDER BY year DESC")
     return {"success": True, "data": rows}
 
-# ---- Media CRUD ----
+# ── Media CRUD (simplified, no category/country/source/resolution/event/tags) ──
 class MediaCreate(BaseModel):
     year_id: int
-    title: Optional[str] = None
+    title: str
     description: Optional[str] = None
     capture_date: Optional[str] = None
-    upload_date: Optional[str] = None
     location: Optional[str] = None
     people: Optional[str] = None
-    event: Optional[str] = None
-    tags: Optional[str] = None
     cloudinary_public_id: str
     cloudinary_url: str
     media_type: str
@@ -93,24 +88,20 @@ class MediaUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     capture_date: Optional[str] = None
-    upload_date: Optional[str] = None
     location: Optional[str] = None
     people: Optional[str] = None
-    event: Optional[str] = None
-    tags: Optional[str] = None
     sort_order: Optional[int] = None
 
 @router.post("/media")
 async def create_media(media: MediaCreate, current=Depends(get_current_admin)):
+    uploaded_by = current["email"]
     sql = """INSERT INTO media (
-        year_id, title, description, capture_date, upload_date,
-        location, people, event, tags, cloudinary_public_id,
-        cloudinary_url, media_type, file_size, parent_id, sort_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+        year_id, title, description, capture_date, location, people, uploaded_by,
+        cloudinary_public_id, cloudinary_url, media_type, file_size, parent_id, sort_order
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
     await db.query(sql, [
         media.year_id, media.title, media.description,
-        media.capture_date, media.upload_date,
-        media.location, media.people, media.event, media.tags,
+        media.capture_date, media.location, media.people, uploaded_by,
         media.cloudinary_public_id, media.cloudinary_url,
         media.media_type, media.file_size, media.parent_id, media.sort_order
     ])
