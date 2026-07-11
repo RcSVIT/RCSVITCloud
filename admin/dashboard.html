@@ -1,254 +1,550 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel – RCSVIT</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:Arial,Helvetica,sans-serif; background:#f4f4f4; color:#222; display:flex; min-height:100vh; }
-        .site-header { position:fixed; top:0; left:0; right:0; height:70px; background:#000; display:flex; align-items:center; justify-content:center; z-index:1000; }
-        .site-title { color:#fff; font-size:32px; font-weight:bold; }
-        .sidebar { width:240px; background:#111; color:#ccc; padding:20px 0; display:flex; flex-direction:column; position:fixed; top:70px; left:0; bottom:0; z-index:500; transition:transform 0.3s; }
-        .sidebar a { display:flex; align-items:center; gap:12px; padding:14px 20px; color:#bbb; text-decoration:none; font-size:15px; transition:background 0.2s, color 0.2s; border-left:4px solid transparent; cursor:pointer; }
-        .sidebar a:hover, .sidebar a.active { background:#222; color:#fff; border-left-color:#fff; }
-        .sidebar a i { width:20px; text-align:center; font-size:16px; }
-        .sidebar .brand { padding:0 20px 20px; font-size:22px; font-weight:bold; color:#fff; letter-spacing:0.5px; border-bottom:1px solid #333; margin-bottom:10px; display:flex; align-items:center; gap:10px; }
-        .sidebar .brand i { font-size:24px; }
-        .main-content { margin-left:240px; margin-top:70px; padding:30px; flex:1; transition:margin-left 0.3s; }
-        .tab-section { display:none; }
-        .tab-section.active { display:block; }
-        .stats-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:20px; margin-bottom:30px; }
-        .stat-card { background:#fff; border:1px solid #d9d9d9; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.04); display:flex; align-items:center; gap:15px; }
-        .stat-icon { width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff; background:#000; }
-        .stat-info h3 { font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:#777; margin-bottom:5px; }
-        .stat-info .value { font-size:24px; font-weight:700; }
-        .stat-info .sub { font-size:12px; color:#999; }
-        .panel-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:30px; }
-        .panel { background:#fff; border:1px solid #d9d9d9; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-        .panel h3 { font-size:16px; margin-bottom:15px; display:flex; align-items:center; gap:8px; }
-        .top-list { list-style:none; }
-        .top-list li { display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #f0f0f0; }
-        .top-list li:last-child { border-bottom:none; }
-        .top-list img, .top-list video { width:40px; height:30px; object-fit:cover; border-radius:4px; }
-        .top-list .name { flex:1; font-weight:500; }
-        .top-list .count { color:#777; font-size:13px; }
-        .form-card { background:#fff; border:1px solid #d9d9d9; border-radius:12px; padding:30px; max-width:800px; margin:0 auto; }
-        .form-group { margin-bottom:18px; }
-        .form-group label { display:block; font-weight:600; margin-bottom:5px; color:#333; }
-        .form-group input, .form-group textarea, .form-group select { width:100%; padding:11px 14px; border:1px solid #d9d9d9; border-radius:8px; font-size:15px; transition:border 0.2s; }
-        .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline:none; border-color:#000; }
-        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-        .btn { display:inline-block; padding:11px 22px; font-size:15px; font-weight:600; border-radius:8px; cursor:pointer; text-decoration:none; transition:background 0.2s; border:none; }
-        .btn-primary { background:#000; color:#fff; }
-        .btn-primary:hover { background:#1a1a1a; }
-        .btn-danger { background:#d32f2f; color:#fff; }
-        .btn-danger:hover { background:#b71c1c; }
-        .btn-outline { background:#fff; color:#222; border:2px solid #bbb; }
-        .btn-outline:hover { background:#f4f4f4; }
-        .btn-block { width:100%; }
-        .media-table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
-        .media-table th, .media-table td { padding:12px 16px; text-align:left; border-bottom:1px solid #eee; }
-        .media-table th { background:#f9f9f9; font-weight:600; }
-        .mobile-toggle { display:none; position:fixed; top:80px; left:10px; z-index:1100; background:#000; color:#fff; border:none; padding:8px 12px; border-radius:6px; font-size:20px; }
-        .upload-file-btn { display:inline-block; padding:12px 24px; background:#000; color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer; margin-bottom:20px; text-align:center; }
-        .upload-file-btn:hover { background:#222; }
-        .file-preview { display:flex; align-items:center; gap:15px; background:#f4f4f4; padding:10px 15px; border-radius:8px; margin-bottom:15px; }
-        .file-preview img, .file-preview video { width:80px; height:60px; object-fit:cover; border-radius:6px; }
-        .file-info { flex:1; }
-        .file-info .file-name { font-weight:600; margin-bottom:3px; }
-        .file-info .file-size { font-size:12px; color:#777; }
-        .remove-file { background:none; border:none; color:#c62828; cursor:pointer; font-size:18px; }
-        .progress-bar { height:8px; background:#e0e0e0; border-radius:4px; margin:15px 0; overflow:hidden; }
-        .progress-fill { height:100%; background:#000; width:0%; transition:width 0.4s; }
-        .message { margin-bottom:15px; font-weight:500; }
-        .message-success { color:#2e7d32; }
-        .message-error { color:#c62828; }
+import { apiFetch } from './api.js';
 
-        /* Manage Media: collapsible year groups */
-        .year-group { margin-bottom:20px; border:1px solid #d9d9d9; border-radius:8px; overflow:hidden; }
-        .year-header { display:flex; align-items:center; justify-content:space-between; background:#f9f9f9; padding:14px 20px; cursor:pointer; }
-        .year-header h4 { font-size:15px; font-weight:600; }
-        .year-media { padding:0 16px; background:#fff; }
-        .year-media table { width:100%; border-collapse:collapse; margin:14px 0; }
-        .year-media th, .year-media td { padding:10px 12px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:14px; }
-        .year-media th { color:#777; text-transform:uppercase; font-size:11px; letter-spacing:0.5px; }
+const CLOUDINARY_CLOUD_NAME = 'jypxyqtu';
+const API_BASE = 'https://rcsvitcloud.onrender.com/api';
+const token = localStorage.getItem('admin_token');
+if (!token && !window.location.pathname.includes('login.html')) {
+    window.location.href = 'login.html';
+}
 
-        /* Modals */
-        .modal-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:center; justify-content:center; padding:20px; }
-        .modal-overlay.active { display:flex; }
-        .modal-box { background:#fff; border-radius:12px; padding:28px; width:100%; max-width:480px; max-height:90vh; overflow-y:auto; }
-        .modal-box h3 { margin-bottom:18px; font-size:18px; }
-        .modal-close-row { display:flex; justify-content:flex-end; gap:10px; margin-top:10px; }
-        .cover-preview { display:none; width:100%; max-height:160px; object-fit:cover; border-radius:8px; margin-top:10px; }
+// ── Tab switching ──────────────────────────────────────
+const tabs = document.querySelectorAll('.sidebar a[data-tab]');
+const sections = document.querySelectorAll('.tab-section');
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        sections.forEach(s => s.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+        if (tab.dataset.tab === 'manage') loadManageTab();
+        if (tab.dataset.tab === 'years') loadYearsTab();
+        if (tab.dataset.tab === 'admins') loadAdminsTab();
+        if (tab.dataset.tab === 'dashboard') loadDashboard();
+        if (tab.dataset.tab === 'upload') loadYearsDropdown();
+        document.getElementById('sidebar').classList.remove('open');
+    });
+});
 
-        @media (max-width:900px) {
-            .sidebar { transform:translateX(-240px); }
-            .sidebar.open { transform:translateX(0); }
-            .main-content { margin-left:0; }
-            .mobile-toggle { display:block; }
-            .panel-row { grid-template-columns:1fr; }
-            .form-row { grid-template-columns:1fr; }
+document.getElementById('menuToggle')?.addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+});
+
+function logout() {
+    localStorage.removeItem('admin_token');
+    window.location.href = 'login.html';
+}
+
+// ── Dashboard ──────────────────────────────────────────
+async function loadDashboard() {
+    try {
+        const data = await apiFetch('/stats/dashboard', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        document.getElementById('statsGrid').innerHTML = `
+            <div class="stat-card"><div class="stat-icon" style="background:#4caf50;"><i class="fas fa-image"></i></div><div class="stat-info"><h3>Total Media</h3><div class="value">${data.total_media}</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#2196f3;"><i class="fas fa-database"></i></div><div class="stat-info"><h3>Storage</h3><div class="value">${(data.storage_bytes/1024/1024).toFixed(1)} MB</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#9c27b0;"><i class="fas fa-hdd"></i></div><div class="stat-info"><h3>Years</h3><div class="value">${data.total_years}</div></div></div>
+        `;
+        document.getElementById('visitorStatsGrid').innerHTML = `
+            <div class="stat-card"><div class="stat-icon" style="background:#e91e63;"><i class="fas fa-users"></i></div><div class="stat-info"><h3>Visitors Today</h3><div class="value">${data.visitors_today}</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#00bcd4;"><i class="fas fa-calendar-week"></i></div><div class="stat-info"><h3>This Month</h3><div class="value">${data.visitors_month}</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#ff5722;"><i class="fas fa-calendar-alt"></i></div><div class="stat-info"><h3>This Year</h3><div class="value">${data.visitors_year}</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#607d8b;"><i class="fas fa-share-alt"></i></div><div class="stat-info"><h3>Total Shares</h3><div class="value">${data.total_shares}</div></div></div>
+        `;
+        document.getElementById('infraStatsGrid').innerHTML = `
+            <div class="stat-card"><div class="stat-icon" style="background:#000;"><i class="fas fa-server"></i></div><div class="stat-info"><h3>Render</h3><div class="value" style="color:green;">${data.render_status}</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#f6821f;"><i class="fas fa-cloud"></i></div><div class="stat-info"><h3>Cloudinary</h3><div class="value">${data.cloudinary_usage_mb !== null ? data.cloudinary_usage_mb + ' MB' : 'N/A'}</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#f6821f;"><i class="fas fa-database"></i></div><div class="stat-info"><h3>D1 Storage</h3><div class="value">N/A</div></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:#f6821f;"><i class="fas fa-chart-bar"></i></div><div class="stat-info"><h3>D1 Requests</h3><div class="value">N/A</div></div></div>
+        `;
+        updateCharts(data.top_views, data.top_shares);
+    } catch (e) {
+        document.getElementById('statsGrid').innerHTML = '<p>Failed to load dashboard data.</p>';
+    }
+}
+loadDashboard();
+
+function updateCharts(topViews, topShares) {
+    const chart1 = Chart.getChart('topMediaChart');
+    if (chart1) chart1.destroy();
+    const chart2 = Chart.getChart('visitorChart');
+    if (chart2) chart2.destroy();
+
+    const ctx1 = document.getElementById('topMediaChart')?.getContext('2d');
+    if (ctx1 && topViews?.length) {
+        new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: topViews.map(m => (m.title||'').substring(0,20) || '?'),
+                datasets: [{ label: 'Views', data: topViews.map(m => m.views_count||0), backgroundColor: '#000' }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    }
+    const ctx2 = document.getElementById('visitorChart')?.getContext('2d');
+    if (ctx2) {
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+                datasets: [{
+                    label: 'Visitors', data: [380,420,450,390,480,520,342],
+                    borderColor: '#000', backgroundColor: 'rgba(0,0,0,0.05)',
+                    fill: true, tension: 0.3
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    }
+    const list = document.getElementById('topSharedList');
+    if (list && topShares?.length) {
+        list.innerHTML = topShares.map(m => `
+            <li>${m.media_type==='video' ? `<video src="${m.url}" muted style="width:40px;height:30px;"></video>` : `<img src="${m.url}" style="width:40px;height:30px;">`}
+            <span class="name">${m.title}</span><span class="count">${m.shares_count} shares</span></li>
+        `).join('');
+    }
+}
+
+// ── Upload (simplified fields, client‑side Cloudinary) ──
+let selectedFile = null;
+const fileInput = document.getElementById('fileInput');
+const filePreview = document.getElementById('filePreview');
+const previewContainer = document.getElementById('previewContainer');
+const fileNameEl = document.getElementById('fileName');
+const fileSizeEl = document.getElementById('fileSize');
+const removeFileBtn = document.getElementById('removeFile');
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+const uploadMessage = document.getElementById('uploadMessage');
+
+window.handleFileSelect = function() {
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+        showUploadMessage('File exceeds 10 MB limit.', 'error');
+        resetFile();
+        return;
+    }
+    selectedFile = file;
+    fileNameEl.textContent = file.name;
+    fileSizeEl.textContent = formatBytes(file.size);
+    filePreview.style.display = 'flex';
+    previewContainer.innerHTML = '';
+    if (file.type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        previewContainer.appendChild(img);
+    } else if (file.type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(file);
+        video.controls = false;
+        video.muted = true;
+        video.preload = 'metadata';
+        video.onloadeddata = () => video.currentTime = 1;
+        video.onseeked = () => video.pause();
+        previewContainer.appendChild(video);
+    }
+};
+
+function resetFile() {
+    selectedFile = null;
+    fileInput.value = '';
+    filePreview.style.display = 'none';
+    previewContainer.innerHTML = '';
+    fileNameEl.textContent = '';
+    fileSizeEl.textContent = '';
+    progressBar.style.display = 'none';
+    progressFill.style.width = '0%';
+}
+
+removeFileBtn.addEventListener('click', resetFile);
+
+function showUploadMessage(msg, type) {
+    uploadMessage.textContent = msg;
+    uploadMessage.className = 'message message-' + type;
+}
+
+function formatBytes(bytes) {
+    if (!bytes) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+async function loadYearsDropdown() {
+    const res = await apiFetch('/admin/years', { headers: { 'Authorization': 'Bearer ' + token } });
+    const years = res.data || [];
+    const select = document.getElementById('upload-year');
+    if (select) select.innerHTML = years.map(y => `<option value="${y.id}">${y.year}</option>`).join('');
+}
+
+document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!selectedFile) { showUploadMessage('Please select a file.', 'error'); return; }
+    uploadMessage.textContent = '';
+    progressBar.style.display = 'block';
+    progressFill.style.width = '0%';
+    let fakeWidth = 0;
+    const interval = setInterval(() => {
+        if (fakeWidth < 90) {
+            fakeWidth += Math.random() * 15 + 5;
+            if (fakeWidth > 90) fakeWidth = 90;
+            progressFill.style.width = fakeWidth + '%';
         }
-    </style>
-</head>
-<body>
-    <header class="site-header">
-        <span class="site-title">RCSVIT Admin</span>
-    </header>
-    <button class="mobile-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
-    <aside class="sidebar" id="sidebar">
-        <div class="brand"><i class="fas fa-shield-alt"></i> Admin</div>
-        <a data-tab="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-        <a data-tab="upload"><i class="fas fa-cloud-upload-alt"></i> Upload Media</a>
-        <a data-tab="manage"><i class="fas fa-edit"></i> Manage Media</a>
-        <a data-tab="years"><i class="fas fa-calendar-alt"></i> Manage Years</a>
-        <a data-tab="admins"><i class="fas fa-users-cog"></i> Manage Admins</a>
-        <a data-tab="library"><i class="fas fa-eye"></i> View Library</a>
-        <a onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
-    </aside>
-    <main class="main-content" id="mainContent">
-        <!-- Dashboard Tab -->
-        <div class="tab-section active" id="tab-dashboard">
-            <h2 style="margin-bottom:25px;">Dashboard Overview</h2>
-            <div class="stats-grid" id="statsGrid"><p>Loading stats…</p></div>
-            <div class="stats-grid" id="visitorStatsGrid"></div>
-            <div class="stats-grid" id="infraStatsGrid"></div>
-            <div class="panel-row">
-                <div class="panel"><h3><i class="fas fa-chart-bar"></i> Top 5 Media (Views)</h3><canvas id="topMediaChart" height="200"></canvas></div>
-                <div class="panel"><h3><i class="fas fa-share-alt"></i> Top 5 Shared</h3>
-                    <ul class="top-list" id="topSharedList"></ul>
+    }, 250);
+
+    // 1. Upload to Cloudinary
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('upload_preset', 'club_unsigned');
+    try {
+        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        const cloudData = await uploadRes.json();
+        if (!cloudData.secure_url) throw new Error('Cloudinary upload failed');
+
+        // 2. Save metadata to backend
+        const payload = {
+            year_id: parseInt(document.getElementById('upload-year').value),
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            capture_date: document.getElementById('capture_date').value || null,
+            location: document.getElementById('location').value || null,
+            people: document.getElementById('people').value || null,
+            cloudinary_public_id: cloudData.public_id,
+            cloudinary_url: cloudData.secure_url,
+            media_type: cloudData.resource_type,
+            file_size: selectedFile.size
+        };
+
+        const metaRes = await apiFetch('/admin/media', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        clearInterval(interval);
+        progressFill.style.width = '100%';
+        if (metaRes.success) {
+            showUploadMessage('✅ Upload successful!', 'success');
+            resetFile();
+        } else {
+            showUploadMessage('Error: ' + (metaRes.detail || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        clearInterval(interval);
+        showUploadMessage('Upload error: ' + err.message, 'error');
+    } finally {
+        setTimeout(() => { progressBar.style.display = 'none'; }, 1200);
+    }
+});
+
+// ── Manage Media (grouped by year, simplified fields) ──
+async function loadManageTab() {
+    const container = document.getElementById('mediaByYear');
+    if (!container) return;
+    container.innerHTML = '<p>Loading…</p>';
+    try {
+        const yearsRes = await apiFetch('/admin/years', { headers: { 'Authorization': 'Bearer ' + token } });
+        const years = yearsRes.data || [];
+        const mediaRes = await apiFetch('/admin/media?limit=500', { headers: { 'Authorization': 'Bearer ' + token } });
+        const allMedia = mediaRes.data || [];
+
+        const grouped = {};
+        years.forEach(y => { grouped[y.id] = { year: y, items: [] }; });
+        allMedia.forEach(m => {
+            if (grouped[m.year_id]) grouped[m.year_id].items.push(m);
+        });
+
+        container.innerHTML = years.map(y => {
+            const items = grouped[y.id]?.items || [];
+            return `
+            <div class="year-group">
+                <div class="year-header">
+                    <h4>${y.year} (${items.length} items)</h4>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="year-media" style="display:none;">
+                    ${items.length === 0 ? '<p>No media</p>' : `
+                    <table>
+                        <thead><tr><th>Preview</th><th>Title</th><th>Type</th><th>Views</th><th>Actions</th></tr></thead>
+                        <tbody>
+                            ${items.map(m => `
+                                <tr>
+                                    <td>${m.media_type === 'video' ? `<video src="${m.cloudinary_url}" muted style="width:60px;height:45px;"></video>` : `<img src="${m.cloudinary_url}" style="width:60px;height:45px;">`}</td>
+                                    <td>${m.title}</td>
+                                    <td>${m.media_type}</td>
+                                    <td>${m.views_count || 0}</td>
+                                    <td>
+                                        <button class="btn btn-outline" onclick="openEditModal(${m.id}, '${m.title.replace(/'/g, "\\'")}', '${(m.description||'').replace(/'/g, "\\'")}', '${(m.capture_date||'').replace(/'/g, "\\'")}', '${(m.location||'').replace(/'/g, "\\'")}', '${(m.people||'').replace(/'/g, "\\'")}')">Edit</button>
+                                        <button class="btn btn-danger" onclick="deleteMedia(${m.id})">Delete</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`}
                 </div>
             </div>
-            <div class="panel"><h3><i class="fas fa-chart-line"></i> Visitor Trend (Last 7 Days)</h3><canvas id="visitorChart" height="80"></canvas></div>
-        </div>
+            `;
+        }).join('');
 
-        <!-- Upload Tab -->
-        <div class="tab-section" id="tab-upload">
-            <h2 style="margin-bottom:20px;">Upload Media</h2>
-            <div class="form-card">
-                <div id="uploadMessage"></div>
-                <form id="uploadForm">
-                    <label class="upload-file-btn" for="fileInput">Choose File</label>
-                    <input type="file" id="fileInput" accept="image/*,video/*" style="display:none;" onchange="handleFileSelect()">
-                    <div id="filePreview" class="file-preview" style="display:none;">
-                        <div id="previewContainer"></div>
-                        <div class="file-info">
-                            <div class="file-name" id="fileName"></div>
-                            <div class="file-size" id="fileSize"></div>
-                        </div>
-                        <button type="button" class="remove-file" id="removeFile"><i class="fas fa-times"></i></button>
-                    </div>
-                    <div class="progress-bar" id="progressBar" style="display:none;">
-                        <div class="progress-fill" id="progressFill"></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Title *</label><input type="text" id="title" required></div>
-                        <div class="form-group"><label>Capture Date</label><input type="date" id="capture_date"></div>
-                    </div>
-                    <div class="form-group"><label>Description</label><textarea id="description" rows="3"></textarea></div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Location</label><input type="text" id="location"></div>
-                        <div class="form-group"><label>People</label><input type="text" id="people"></div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group"><label>Year *</label><select id="upload-year" required></select></div>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block" id="uploadBtn">Upload Media</button>
-                </form>
-            </div>
-        </div>
+        // Toggle year sections
+        document.querySelectorAll('.year-header').forEach(header => {
+            header.addEventListener('click', function() {
+                const mediaDiv = this.nextElementSibling;
+                const icon = this.querySelector('i');
+                if (mediaDiv.style.display === 'none' || !mediaDiv.style.display) {
+                    mediaDiv.style.display = 'block';
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-up');
+                } else {
+                    mediaDiv.style.display = 'none';
+                    icon.classList.remove('fa-chevron-up');
+                    icon.classList.add('fa-chevron-down');
+                }
+            });
+        });
+    } catch (e) {
+        container.innerHTML = '<p>Failed to load media.</p>';
+    }
+}
 
-        <!-- Manage Media Tab -->
-        <div class="tab-section" id="tab-manage">
-            <h2 style="margin-bottom:20px;">Manage Media</h2>
-            <div id="mediaByYear"><p>Loading…</p></div>
-        </div>
+window.openEditModal = function(id, title, description, capture_date, location, people) {
+    document.getElementById('edit-media-id').value = id;
+    document.getElementById('edit-title').value = title;
+    document.getElementById('edit-description').value = description;
+    document.getElementById('edit-capture_date').value = capture_date;
+    document.getElementById('edit-location').value = location;
+    document.getElementById('edit-people').value = people;
+    document.getElementById('editMediaModal').classList.add('active');
+};
 
-        <!-- Manage Years Tab -->
-        <div class="tab-section" id="tab-years">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2>Manage Years</h2>
-                <button class="btn btn-primary" id="addYearBtn"><i class="fas fa-plus"></i> Add Year</button>
-            </div>
-            <div style="overflow-x:auto;">
-                <table class="media-table">
-                    <thead><tr><th>Year</th><th>President</th><th>Media Count</th><th>Cover</th><th>Actions</th></tr></thead>
-                    <tbody id="yearsTableBody">
-                        <tr><td colspan="5">Loading…</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+window.saveEdit = async function() {
+    const id = document.getElementById('edit-media-id').value;
+    const payload = {
+        title: document.getElementById('edit-title').value,
+        description: document.getElementById('edit-description').value,
+        capture_date: document.getElementById('edit-capture_date').value,
+        location: document.getElementById('edit-location').value,
+        people: document.getElementById('edit-people').value
+    };
+    try {
+        await apiFetch(`/admin/media/${id}`, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        document.getElementById('editMediaModal').classList.remove('active');
+        loadManageTab();
+        loadDashboard();
+    } catch (e) { alert('Error updating media'); }
+};
 
-        <!-- Manage Admins Tab -->
-        <div class="tab-section" id="tab-admins">
-            <h2 style="margin-bottom:20px;">Manage Admins</h2>
-            <div class="form-card" style="margin-bottom:30px;">
-                <h3 style="margin-bottom:16px;">Add New Admin</h3>
-                <div class="form-row">
-                    <div class="form-group"><label>Email *</label><input type="email" id="newAdminEmail" required></div>
-                    <div class="form-group"><label>Password *</label><input type="password" id="newAdminPassword" required></div>
-                </div>
-                <div class="form-group">
-                    <label>Role</label>
-                    <select id="newAdminRole">
-                        <option value="admin" selected>Admin</option>
-                        <option value="super">Super Admin</option>
-                    </select>
-                </div>
-                <button class="btn btn-primary btn-block" id="addAdminBtn">Create Admin</button>
-            </div>
-            <div id="adminsList"><p>Loading…</p></div>
-        </div>
+window.deleteMedia = async function(id) {
+    if (!confirm('Delete permanently?')) return;
+    await apiFetch(`/admin/media/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    loadManageTab();
+    loadDashboard();
+};
 
-        <!-- View Library Tab -->
-        <div class="tab-section" id="tab-library">
-            <div style="text-align:center; margin-top:80px;">
-                <i class="fas fa-external-link-alt" style="font-size:60px; color:#000;"></i>
-                <h2 style="margin:20px 0;">View Public Library</h2>
-                <a href="../index.html" target="_blank" class="btn btn-primary" style="margin-top:15px;">Open Archive</a>
-            </div>
-        </div>
-    </main>
+// ── Manage Years (with cover upload) ──
+async function loadYearsTab() {
+    const tbody = document.getElementById('yearsTableBody');
+    if (!tbody) return;
+    try {
+        const data = await apiFetch('/admin/years', { headers: { 'Authorization': 'Bearer ' + token } });
+        const years = data.data || [];
+        tbody.innerHTML = years.map(y => `
+            <tr>
+                <td>${y.year}</td>
+                <td>${y.president_name || '—'}</td>
+                <td>${y.media_count || 0}</td>
+                <td>${y.cover_image ? `<img src="${y.cover_image}" style="width:40px;height:30px;object-fit:cover;">` : '—'}</td>
+                <td>
+                    <button class="btn btn-outline" onclick="editYear(${y.id}, '${y.president_name||''}')">Edit</button>
+                    <button class="btn btn-outline" onclick="changeCover(${y.id})">Cover</button>
+                    <button class="btn btn-danger" onclick="deleteYear(${y.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) { tbody.innerHTML = '<tr><td colspan="5">Failed to load years.</td></tr>'; }
+}
 
-    <!-- Edit Media Modal -->
-    <div class="modal-overlay" id="editMediaModal">
-        <div class="modal-box">
-            <h3>Edit Media</h3>
-            <input type="hidden" id="edit-media-id">
-            <div class="form-group"><label>Title</label><input type="text" id="edit-title"></div>
-            <div class="form-group"><label>Description</label><textarea id="edit-description" rows="3"></textarea></div>
-            <div class="form-group"><label>Capture Date</label><input type="date" id="edit-capture_date"></div>
-            <div class="form-group"><label>Location</label><input type="text" id="edit-location"></div>
-            <div class="form-group"><label>People</label><input type="text" id="edit-people"></div>
-            <div class="modal-close-row">
-                <button class="btn btn-outline" onclick="document.getElementById('editMediaModal').classList.remove('active')">Cancel</button>
-                <button class="btn btn-primary" id="saveEditBtn">Save Changes</button>
-            </div>
-        </div>
-    </div>
+window.editYear = function(id, currentName) {
+    const newName = prompt('New president name:', currentName);
+    if (newName !== null) {
+        apiFetch(`/admin/years/${id}`, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ president_name: newName })
+        }).then(() => { loadYearsTab(); loadYearsDropdown(); }).catch(() => alert('Error updating'));
+    }
+};
 
-    <!-- Add Year Modal -->
-    <div class="modal-overlay" id="addYearModal">
-        <div class="modal-box">
-            <h3>Add New Year</h3>
-            <div class="form-group"><label>Year *</label><input type="number" id="newYear" placeholder="e.g. 2026"></div>
-            <div class="form-group"><label>President Name</label><input type="text" id="newPresident"></div>
-            <div class="form-group">
-                <label>Cover Image</label>
-                <input type="file" id="yearCoverFile" accept="image/*">
-                <img id="yearCoverPreview" class="cover-preview">
-            </div>
-            <div class="modal-close-row">
-                <button class="btn btn-outline" onclick="document.getElementById('addYearModal').classList.remove('active')">Cancel</button>
-                <button class="btn btn-primary" id="createYearBtn">Create Year</button>
-            </div>
-        </div>
-    </div>
+window.changeCover = function(yearId) {
+    // Create a temporary file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            const res = await fetch(`${API_BASE}/admin/years/${yearId}/cover`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('Cover updated!');
+                loadYearsTab();
+            } else {
+                alert('Upload failed: ' + (data.detail || ''));
+            }
+        } catch (e) {
+            alert('Network error');
+        }
+    };
+    input.click();
+};
 
-    <script type="module" src="../js/admin.js"></script>
-</body>
-</html>
+window.deleteYear = async function(id) {
+    if (!confirm('Delete year and all its media?')) return;
+    await apiFetch(`/admin/years/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    loadYearsTab();
+    loadYearsDropdown();
+    loadDashboard();
+};
+
+// Create year (with optional cover image upload)
+async function createYear() {
+    const year = document.getElementById('newYear').value;
+    const president = document.getElementById('newPresident').value;
+    if (!year) return alert('Enter a year');
+
+    // 1. Create the year first (without cover)
+    const createRes = await apiFetch('/admin/years', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: parseInt(year), president_name: president })
+    });
+    if (!createRes.success) {
+        alert('Failed to create year');
+        return;
+    }
+
+    // 2. If a cover file is selected, upload it
+    const coverFile = document.getElementById('yearCoverFile').files[0];
+    if (coverFile) {
+        const formData = new FormData();
+        formData.append('file', coverFile);
+        try {
+            const coverRes = await fetch(`${API_BASE}/admin/years/${createRes.id || 0}/cover`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData
+            });
+            // Even if this fails, the year was created successfully
+        } catch (e) { /* ignore cover upload errors */ }
+    }
+
+    alert('Year created');
+    document.getElementById('addYearModal').classList.remove('active');
+    document.getElementById('newYear').value = '';
+    document.getElementById('newPresident').value = '';
+    document.getElementById('yearCoverFile').value = '';
+    document.getElementById('yearCoverPreview').style.display = 'none';
+    loadYearsTab();
+    loadYearsDropdown();
+    loadDashboard();
+}
+
+// ── Manage Admins ──
+async function loadAdminsTab() {
+    const container = document.getElementById('adminsList');
+    if (!container) return;
+    try {
+        const data = await apiFetch('/admin/users/', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const admins = Array.isArray(data) ? data : [];
+        if (!admins.length) {
+            container.innerHTML = '<p>No admin users found.</p>';
+            return;
+        }
+        container.innerHTML = admins.map(a => `
+            <div style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid #f1f5f9;">
+                <span>${a.email} (${a.role})</span>
+                <button onclick="deleteAdmin(${a.id})" class="btn btn-danger">Remove</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<p>Only super admins can manage users.</p>';
+    }
+}
+
+window.deleteAdmin = async function(id) {
+    if (!confirm('Remove this admin?')) return;
+    await apiFetch(`/admin/users/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    loadAdminsTab();
+};
+
+async function addAdmin() {
+    const email = document.getElementById('newAdminEmail').value;
+    const password = document.getElementById('newAdminPassword').value;
+    const role = document.getElementById('newAdminRole').value;
+    if (!email || !password) return alert('Fill all fields');
+    await apiFetch('/admin/users/', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role })
+    });
+    alert('Admin added');
+    loadAdminsTab();
+    document.getElementById('newAdminEmail').value = '';
+    document.getElementById('newAdminPassword').value = '';
+}
+
+// ── Event listeners for buttons that are not form‑based ──
+document.addEventListener('DOMContentLoaded', () => {
+    // Create year button
+    document.getElementById('createYearBtn')?.addEventListener('click', createYear);
+    // Add admin button
+    document.getElementById('addAdminBtn')?.addEventListener('click', addAdmin);
+    // Save edit button
+    document.getElementById('saveEditBtn')?.addEventListener('click', window.saveEdit);
+    // Add year modal trigger
+    document.getElementById('addYearBtn')?.addEventListener('click', () => {
+        document.getElementById('addYearModal').classList.add('active');
+    });
+    // Cover image preview
+    const coverInput = document.getElementById('yearCoverFile');
+    const coverPreview = document.getElementById('yearCoverPreview');
+    coverInput?.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            coverPreview.src = URL.createObjectURL(file);
+            coverPreview.style.display = 'block';
+        } else {
+            coverPreview.style.display = 'none';
+        }
+    });
+});
