@@ -1,17 +1,14 @@
 import sys
 import traceback
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import auth, media, admin, admin_users, stats, share
 from database import D1Wrapper
 from utils.security import hash_password
-from routers.admin import get_current_admin    # used by the temporary migration route
-from migrate import migrate                     # import the migration function
 import os
 
 app = FastAPI(title="RCSVIT Cloud API", version="2.0.0")
 
-# CORS – verify ALLOWED_ORIGIN on Render matches exactly https://rcsvit.github.io (no trailing slash)
 allowed_origin = os.getenv("ALLOWED_ORIGIN", "https://rcsvit.github.io")
 app.add_middleware(
     CORSMiddleware,
@@ -21,23 +18,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Routers (groups removed)
 app.include_router(auth.router, prefix="/api")
 app.include_router(media.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(admin_users.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(share.router, prefix="/api")
-
-# ─────────────────────────────────────────────────────────────
-# TEMPORARY – run once to migrate your existing D1 database,
-# then DELETE this entire block and redeploy.
-@app.post("/api/admin/migrate")
-async def run_migration(current = Depends(get_current_admin)):
-    """Execute the simplified schema migration (admin‑only)."""
-    await migrate()
-    return {"status": "Migration complete – remove this endpoint now."}
-# ─────────────────────────────────────────────────────────────
 
 @app.on_event("startup")
 async def startup():
