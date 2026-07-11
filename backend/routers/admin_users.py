@@ -1,4 +1,3 @@
-import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from database import D1Wrapper
 from utils.security import hash_password
@@ -28,9 +27,6 @@ async def get_super_admin(current=Depends(get_current_admin)):
 @router.get("/", response_model=List[AdminOut])
 async def list_admins(current=Depends(get_current_admin)):
     rows = await db.query("SELECT id, email, role, created_at FROM admins ORDER BY created_at")
-    for row in rows:
-        if isinstance(row.get("created_at"), (int, float)):
-            row["created_at"] = str(row["created_at"])
     return rows
 
 @router.post("/")
