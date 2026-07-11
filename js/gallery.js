@@ -3,7 +3,6 @@ import { fetchMedia, apiFetch } from './api.js';
 const GITHUB_PAGES_URL = 'https://rcsvit.github.io/RCSVITCloud';
 const API_BASE = 'https://rcsvitcloud.onrender.com/api';
 
-// Cloudinary helpers
 function thumbnailUrl(originalUrl, mediaType) {
     if (!originalUrl) return '';
     if (mediaType === 'video') {
@@ -12,14 +11,15 @@ function thumbnailUrl(originalUrl, mediaType) {
     }
     return originalUrl.replace('/upload/', '/upload/c_fill,w_400,h_267,q_auto,f_auto/');
 }
+
 function displayUrl(originalUrl, mediaType) {
     if (!originalUrl) return '';
     if (mediaType === 'video') return originalUrl;
     return originalUrl.replace('/upload/', '/upload/q_auto,f_auto,w_1200/');
 }
+
 function downloadUrl(originalUrl) { return originalUrl; }
 
-// Download popup
 function showDownloadPopup(imageUrl, title, callback) {
     const existing = document.getElementById('downloadPopup');
     if (existing) existing.remove();
@@ -29,8 +29,12 @@ function showDownloadPopup(imageUrl, title, callback) {
     const box = document.createElement('div');
     box.style.cssText = 'background:#fff;padding:30px 25px;border-radius:12px;max-width:450px;width:90%;box-shadow:0 10px 30px rgba(0,0,0,0.3);text-align:center;';
     box.innerHTML = `
-        <h3>💸 Hosting Costs</h3>
-        <p>Each download uses our limited bandwidth. You can help us by <strong>copying the link</strong> and sharing it instead.<br>The media will stay available online.</p>
+        <h3 style="margin-bottom:15px;font-size:1.3rem;">💸 Hosting Costs</h3>
+        <p style="margin-bottom:20px;color:#555;font-size:0.95rem;">
+            Each download uses our limited bandwidth. You can help us by
+            <strong>copying the link</strong> and sharing it instead.<br>
+            The media will stay available online.
+        </p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
             <button id="popupCopyBtn" style="padding:10px 20px;border:2px solid #000;background:#fff;color:#000;font-weight:bold;border-radius:8px;cursor:pointer;">📋 Copy Link</button>
             <button id="popupDownloadBtn" style="padding:10px 20px;border:none;background:#d32f2f;color:#fff;font-weight:bold;border-radius:8px;cursor:pointer;">⬇️ Download Anyway</button>
@@ -39,7 +43,7 @@ function showDownloadPopup(imageUrl, title, callback) {
     overlay.appendChild(box);
     document.body.appendChild(overlay);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-    const imgId = (window.imageId) ? window.imageId : null;
+    const imgId = window.imageId || null;
     document.getElementById('popupCopyBtn').addEventListener('click', () => {
         const shareUrl = `${API_BASE}/share/${imgId}`;
         navigator.clipboard.writeText(shareUrl);
@@ -74,35 +78,47 @@ async function performDownload(imageUrl, title) {
     }
 }
 
-// Page init
+// ── Page init ───────────────────────────────────────────
 if (document.getElementById('year-grid')) loadYears();
 if (document.getElementById('gallery-grid')) loadGallery();
 if (document.getElementById('detail-container')) loadDetail();
 
+// ── Years (with cover / auto‑cover) ─────────────────────
 async function loadYears() {
     const container = document.getElementById('year-grid');
+    if (!container) return;
     try {
         const data = await fetchMedia({ type: 'years' });
         const years = data.data || [];
-        container.innerHTML = years.map(y => `
-            <a href="gallery.html?year=${y.id}" class="gallery-card" style="display:block;text-decoration:none;color:inherit;">
-                <div class="card-img-wrap" style="background:#000;display:flex;align-items:center;justify-content:center;aspect-ratio:3/2;">
-                    ${y.cover_image ? `<img src="${y.cover_image}" style="width:100%;height:100%;object-fit:cover;">` : `<span style="color:#fff;font-size:2rem;font-weight:700;">${y.year}</span>`}
-                </div>
-                <div class="card-body">
-                    <h3 class="card-title">${y.year}</h3>
-                    <p class="card-sub">${y.president_name || 'President'} · ${y.media_count || 0} items</p>
-                </div>
-            </a>
-        `).join('');
-    } catch (e) { container.innerHTML = '<p>Error loading years.</p>'; }
+        container.innerHTML = years.map(y => {
+            const cover = y.cover_image || y.auto_cover;   // manual cover first, then first image
+            return `
+                <a href="gallery.html?year=${y.id}" class="gallery-card" style="display:block;text-decoration:none;color:inherit;">
+                    <div class="card-img-wrap" style="background:#000; display:flex; align-items:center; justify-content:center; aspect-ratio:3/2;">
+                        ${cover
+                            ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover;">`
+                            : `<span style="color:#fff; font-size:2rem; font-weight:700;">${y.year}</span>`
+                        }
+                    </div>
+                    <div class="card-body">
+                        <h3 class="card-title">${y.year}</h3>
+                        <p class="card-sub">${y.president_name || 'President'} · ${y.media_count || 0} items</p>
+                    </div>
+                </a>
+            `;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = '<p>Error loading years.</p>';
+    }
 }
 
+// ── Gallery ─────────────────────────────────────────────
 async function loadGallery() {
     const params = new URLSearchParams(window.location.search);
     const yearId = params.get('year');
     if (!yearId) { document.body.innerHTML = '<p>No year selected.</p>'; return; }
     const grid = document.getElementById('gallery-grid');
+    if (!grid) return;
     try {
         const data = await fetchMedia({ year_id: yearId, limit: 100 });
         const media = data.data || [];
@@ -121,18 +137,21 @@ async function loadGallery() {
                             <p class="card-sub">👁 ${item.views_count} · ⤴ ${item.shares_count}</p>
                         </div>
                     </a>
-                </article>`;
+                </article>
+            `;
         }).join('');
         apiFetch('/media/visitor', { method: 'POST' }).catch(() => {});
     } catch (e) { grid.innerHTML = '<p>Failed to load media.</p>'; }
 }
 
+// ── Detail ──────────────────────────────────────────────
 async function loadDetail() {
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id');
     if (!id) return;
     window.imageId = id;
     const container = document.getElementById('detail-container');
+    if (!container) return;
     try {
         const res = await fetch(`${API_BASE}/media/${id}`);
         if (!res.ok) throw new Error('Not found');
@@ -169,8 +188,8 @@ async function loadDetail() {
             <section class="related-section">
                 <h2 class="related-heading">Related Media</h2>
                 <div id="relatedGrid" class="gallery-grid related-grid"></div>
-            </section>`;
-        // Download / copy
+            </section>
+        `;
         document.getElementById('downloadBtn').addEventListener('click', () => {
             showDownloadPopup(downloadUrl(item.cloudinary_url), item.title || 'Media', () => {
                 performDownload(downloadUrl(item.cloudinary_url), item.title || 'Media');
@@ -184,7 +203,6 @@ async function loadDetail() {
             apiFetch(`/media/${id}/share`, { method: 'POST' }).catch(() => {});
             setTimeout(() => { btn.textContent = 'Copy Link'; }, 2000);
         });
-        // Prev / next
         const yearId = item.year_id;
         if (yearId) {
             const allData = await fetchMedia({ year_id: yearId, limit: 100 });
@@ -199,7 +217,6 @@ async function loadDetail() {
                 window.location.href = `detail.html?id=${ids[newIndex]}`;
             });
         }
-        // Related
         const relatedData = await fetchMedia({ year_id: yearId, limit: 4 });
         const relatedItems = (relatedData.data || []).filter(r => r.id !== parseInt(id)).slice(0, 4);
         document.getElementById('relatedGrid').innerHTML = relatedItems.map(r => {
@@ -216,7 +233,8 @@ async function loadDetail() {
                             <p class="card-sub">👁 ${r.views_count || 0} · ⤴ ${r.shares_count || 0}</p>
                         </div>
                     </a>
-                </article>`;
+                </article>
+            `;
         }).join('');
     } catch (e) {
         container.innerHTML = '<p>⚠️ Media not found or failed to load.</p>';
