@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from database import D1Wrapper
-import datetime
+from datetime import date
 
 router = APIRouter(prefix="/media", tags=["media"])
 db = D1Wrapper()
@@ -41,6 +41,15 @@ async def track_view(media_id: int):
 @router.post("/{media_id}/share")
 async def track_share(media_id: int):
     await db.query("UPDATE media SET shares_count = shares_count + 1 WHERE id = ?", [media_id])
+    return {"success": True}
+
+@router.post("/visitor")
+async def track_visitor():
+    today = date.today().isoformat()
+    await db.query(
+        "INSERT INTO visitor_stats (date, count) VALUES (?, 1) ON CONFLICT(date) DO UPDATE SET count = count + 1",
+        [today]
+    )
     return {"success": True}
 
 @router.get("/year/{year_id}/related")
