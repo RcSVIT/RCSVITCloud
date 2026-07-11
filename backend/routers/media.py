@@ -8,8 +8,10 @@ db = D1Wrapper()
 @router.get("/years")
 async def get_public_years():
     sql = """
-        SELECT y.id, y.year, y.president_name, y.created_at,
-               (SELECT COUNT(*) FROM media WHERE media.year_id = y.id) AS media_count
+        SELECT y.id, y.year, y.president_name, y.cover_image,
+               (SELECT COUNT(*) FROM media WHERE media.year_id = y.id) AS media_count,
+               (SELECT cloudinary_url FROM media WHERE media.year_id = y.id 
+                AND media_type = 'image' ORDER BY sort_order ASC, created_at ASC LIMIT 1) AS auto_cover
         FROM years y
         ORDER BY y.year DESC
     """
