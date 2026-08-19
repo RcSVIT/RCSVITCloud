@@ -87,10 +87,16 @@
     <script type="module" src="js/gallery.js"></script>
 
     <script>
+      // ── GitHub Pages 404 redirect restore ───────────────────────────────
+      // (404.html saves the path, we clean it up here)
+      sessionStorage.removeItem('gh-redirect-path');
+
       // ── Service Worker registration ──────────────────────────────────────
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js');
+          navigator.serviceWorker.register('/RCSVITCloud/sw.js', {
+            scope: '/RCSVITCloud/'
+          });
         });
       }
 
