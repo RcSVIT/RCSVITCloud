@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RCSVIT Cloud Services</title>
+  <script>
+    // GitHub Pages 404 workaround:
+    // Any unknown path hits this file. We redirect to the app root.
+    // The app takes over from there.
+    const base = '/RCSVITCloud/';
+    const path = window.location.pathname;
+    // Save original path in case app needs it later
+    sessionStorage.setItem('gh-redirect-path', path);
+    window.location.replace(base);
+  </script>
+</head>
+<body></body>
+</html>
