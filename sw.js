@@ -1,11 +1,12 @@
-const CACHE_NAME = 'rcsvit-v2';
+const CACHE_NAME = 'rcsvit-v3';
+const BASE = '/RCSVITCloud';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/css/styles.css',
-  '/js/api.js',
-  '/js/gallery.js',
-  '/manifest.json'
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/css/styles.css',
+  BASE + '/js/api.js',
+  BASE + '/js/gallery.js',
+  BASE + '/manifest.json'
 ];
 
 // ── Install: pre-cache all static assets ──────────────────────────────────
@@ -13,7 +14,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
-  // Activate immediately without waiting for old SW to die
   self.skipWaiting();
 });
 
@@ -28,11 +28,10 @@ self.addEventListener('activate', (event) => {
       )
     )
   );
-  // Take control of all open tabs immediately
   self.clients.claim();
 });
 
-// ── Fetch: navigation gets index.html from cache (enables redirect feel) ──
+// ── Fetch ──────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -43,17 +42,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests (page loads): serve index.html from cache first.
-  // This is what makes the browser "redirect" to the installed app —
-  // Chrome intercepts in-scope navigations and opens the PWA window instead.
+  // Navigation requests: always serve index.html from cache
   if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/index.html').then((cached) => cached || fetch(request))
+      caches.match(BASE + '/index.html').then((cached) => cached || fetch(request))
     );
     return;
   }
 
-  // All other requests: cache-first, fall back to network
+  // Static assets: cache-first, fall back to network
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request))
   );
