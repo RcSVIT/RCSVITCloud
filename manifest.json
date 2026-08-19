@@ -1,9 +1,9 @@
 {
   "name": "RCSVIT Cloud Services",
   "short_name": "RCSVIT",
-  "id": "/",
-  "start_url": "/",
-  "scope": "/",
+  "id": "/RCSVITCloud/",
+  "start_url": "/RCSVITCloud/",
+  "scope": "/RCSVITCloud/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#000000",
